@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Crew Meal Manager</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#15202b; --muted:#6b7682; --line:#e3e6ea;
+    --accent:#1d3557; --accent-ink:#ffffff; --ok:#1f8a4c; --ok-bg:#e8f5ee; --bad:#c62f2f; --bad-bg:#fdecec;
+    --warn:#8a5a00; --warn-bg:#fff4dc; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.35;-webkit-text-size-adjust:100%;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 24px) env(safe-area-inset-left);
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:10px 12px}
+  header.top{display:flex;align-items:center;gap:12px;min-height:40px;margin-bottom:4px}
+  header.top h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.01em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .saved{font-size:13px;color:var(--muted);white-space:nowrap}
+  .back{background:none;border:0;color:var(--accent);font-size:15px;font-weight:600;padding:10px 4px;cursor:pointer}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin:0 0 10px}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 4px 6px;font-weight:700}
+  label.f{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:600}
+  input{
+    font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1px solid #cfd5dc;border-radius:10px;
+    height:40px;padding:0 10px;width:100%;-webkit-appearance:none;appearance:none;
+  }
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,53,87,.15)}
+  input.num{text-align:center;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;width:68px;flex:none}
+  input.upper{text-transform:uppercase}
+  input[type=date]{min-height:40px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  @media (max-width:340px){.grid2{grid-template-columns:1fr}}
+  .row{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+  .row:last-child{margin-bottom:0}
+  .tag{flex:none;width:24px;height:24px;border-radius:6px;background:#eef1f5;color:var(--accent);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .lbl{flex:1;min-width:0;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .totalline{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-weight:600}
+  .big{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+  .btn{
+    display:block;width:100%;border:0;border-radius:12px;min-height:44px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;
+    background:var(--accent);color:var(--accent-ink);letter-spacing:.02em;padding:0 16px;
+  }
+  .btn:active{opacity:.85}
+  .btn.ghost{background:#fff;color:var(--accent);border:1.5px solid var(--accent)}
+  .btn.small{min-height:38px;font-size:14px}
+  .btn.danger{background:var(--bad)}
+  .hint{font-size:12px;color:var(--muted);margin:6px 2px 0}
+  .err{font-size:13px;color:var(--bad);margin:10px 2px 0;font-weight:600}
+  .notice{border-radius:12px;padding:8px 12px;font-size:13px;margin:0 0 8px;font-weight:600}
+  .notice.warn{background:var(--warn-bg);color:var(--warn)}
+  .notice.bad{background:var(--bad-bg);color:var(--bad)}
+  .notice.ok{background:var(--ok-bg);color:var(--ok)}
+  .notice .btn{margin-top:10px}
+  table.sum{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.sum th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right;padding:6px 4px;font-weight:700}
+  table.sum th:first-child,table.sum td:first-child{text-align:left}
+  table.sum td{padding:5px 4px;border-top:1px solid var(--line);text-align:right;font-size:14px;font-weight:600}
+  table.sum td:first-child{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  table.sum tr.tot td{font-weight:800}
+  .red{color:var(--bad)} .green{color:var(--ok)}
+  .cs{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+  .cs:first-child{border-top:0;padding-top:0}
+  .cs .nm{font-weight:700;font-size:14px}
+  .cs .det{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .cs .grow{flex:1;min-width:0}
+  .pill{flex:none;border-radius:999px;padding:3px 9px;font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)}
+  .pill.bad{background:var(--bad-bg);color:var(--bad)}
+  .cart{border-left:5px solid var(--ok)}
+  .cart.over{border-left-color:var(--bad)}
+  .cart-head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .cart-head input{font-weight:700}
+  .sub{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin:10px 0 6px}
+  .sp-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .sp-row input.spn{flex:1;min-width:0}
+  .x{flex:none;width:38px;height:40px;border-radius:10px;border:1px solid #cfd5dc;background:#fff;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+  .cart-foot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-weight:600}
+  .flight{display:flex;align-items:center;gap:10px}
+  .flight .open{flex:1;min-width:0;text-align:left;background:none;border:0;font:inherit;color:inherit;padding:4px 0;cursor:pointer}
+  .flight .fno{font-size:16px;font-weight:800}
+  .flight .meta{font-size:12px;color:var(--muted)}
+  .empty{text-align:center;color:var(--muted);padding:28px 8px}
+  .mode{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 8px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
+  .dot.off{background:#d39b00}
+  .foot{font-size:13px;color:var(--muted);text-align:center;margin-top:18px}
+  .dlg-back{position:fixed;inset:0;background:rgba(10,20,30,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px;z-index:10}
+  .dlg-back[hidden]{display:none}
+  .dlg{background:#fff;border-radius:16px;padding:20px;max-width:440px;width:100%;margin-bottom:env(safe-area-inset-bottom)}
+  .dlg p{margin:0 0 16px;font-size:17px}
+  .dlg .grid2{grid-template-columns:1fr 1fr}
+  @media (min-width:600px){.dlg-back{align-items:center}}
+  /* two carts side by side */
+  #carts{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+  @media (min-width:640px){#carts{grid-template-columns:1fr 1fr 1fr}}
+  #carts .card{margin:0;padding:8px;border-left-width:4px;border-radius:12px}
+  #carts .cart-head{flex-wrap:wrap;gap:4px;margin-bottom:4px}
+  #carts .cart-head input{flex:1 1 100%;padding:0 8px}
+  #carts input{height:36px;font-size:16px}
+  #carts input.num{width:44px;padding:0 2px;font-size:16px}
+  #carts .tag{width:20px;height:20px;font-size:11px;border-radius:5px}
+  #carts .lbl{font-size:13px}
+  #carts .row{gap:5px;margin-bottom:5px}
+  #carts .sub{margin:6px 0 4px;font-size:10px}
+  #carts .sp-row{gap:4px;margin-bottom:5px}
+  #carts .sp-row input.spn{padding:0 6px}
+  #carts .x{width:28px;height:36px;font-size:17px;border-radius:8px}
+  #carts .btn.small{min-height:34px;font-size:13px;padding:0 4px}
+  #carts .cart-foot{margin-top:6px;padding-top:6px;font-size:12px;align-items:center}
+  #carts .cart-foot .big{font-size:17px}
+  #carts .pill{font-size:12px;padding:2px 8px}
+  .start{min-height:calc(100vh - 60px);display:flex;flex-direction:column;justify-content:center;text-align:center;padding:24px 8px}
+  .logo{width:64px;height:64px;border-radius:16px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-weight:800;font-size:18px;letter-spacing:.02em}
+  .start h1{font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+  .start .tagline{color:var(--muted);margin:0 0 24px;font-size:15px}
+  .who{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 16px;font-size:14px;color:var(--muted)}
+  .who b{color:var(--ink);font-size:16px;display:block;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<datalist id="spml">
+  <option value="AVML"><option value="VGML"><option value="VLML"><option value="VJML"><option value="VOML"><option value="RVML">
+  <option value="GFML"><option value="MOML"><option value="KSML"><option value="HNML"><option value="DBML"><option value="LFML">
+  <option value="LSML"><option value="NLML"><option value="BLML"><option value="SFML"><option value="FPML"><option value="CHML"><option value="BBML">
+</datalist>
+
+<div class="dlg-back" id="dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true">
+    <p id="dlg-msg"></p>
+    <div class="grid2">
+      <button class="btn ghost small" id="dlg-no">Cancel</button>
+      <button class="btn small" id="dlg-yes">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ALLOCATION ENGINE (pure functions, no DOM) ===================== -->
+<script id="engine">
+var CAP = 40;
+var KEYS = ['A', 'B', 'C'];
+
+function toInt(v) { v = Math.floor(Number(v)); return isFinite(v) && v > 0 ? v : 0; }
+function specialsTotal(cart) { return cart.specials.reduce(function (s, x) { return s + toInt(x.qty); }, 0); }
+function stdTotal(cart) { return KEYS.reduce(function (s, k) { return s + toInt(cart.std[k]); }, 0); }
+function cartTotal(cart) { return specialsTotal(cart) + stdTotal(cart); }
+
+/* Distribute standard meals across carts.
+   - Special meals stay where the user put them and reduce that cart's free space.
+   - One casserole at a time: take the choice with the most still unplaced, put it in the
+     cart where that choice is currently thinnest relative to the cart's free space.
+   - Never exceeds 40 per cart, never invents or loses a meal; leftovers are returned as unallocated. */
+function distribute(totals, carts) {
+  var n = carts.length;
+  var cap = carts.map(function (c) { return Math.max(0, CAP - specialsTotal(c)); });
+  var free = cap.slice();
+  var alloc = carts.map(function () { return { A: 0, B: 0, C: 0 }; });
+  var left = { A: toInt(totals.A), B: toInt(totals.B), C: toInt(totals.C) };
+  while (true) {
+    var k = null;
+    KEYS.forEach(function (key) { if (left[key] > 0 && (k === null || left[key] > left[k])) k = key; });
+    if (k === null) break;
+    var best = -1, bestScore = Infinity;
+    for (var i = 0; i < n; i++) {
+      if (free[i] <= 0) continue;
+      var score = (alloc[i][k] + 1) / cap[i];
+      if (score < bestScore - 1e-12 || (Math.abs(score - bestScore) <= 1e-12 && free[i] > free[best])) {
+        best = i; bestScore = score;
+      }
+    }
+    if (best === -1) break; // no space left anywhere
+    alloc[best][k]++; free[best]--; left[k]--;
+  }
+  return { alloc: alloc, unallocated: left };
+}
+
+function allocatedTotals(carts) {
+  var t = { A: 0, B: 0, C: 0 };
+  carts.forEach(function (c) { KEYS.forEach(function (k) { t[k] += toInt(c.std[k]); }); });
+  return t;
+}
+
+/* Largest value a user may type into one cart's standard field:
+   limited by the cart's 40 capacity and by how many of that choice are still unplaced. */
+function manualMax(totals, carts, ci, k) {
+  var cart = carts[ci];
+  var current = toInt(cart.std[k]);
+  var room = CAP - (cartTotal(cart) - current);
+  var unplaced = toInt(totals[k]) - allocatedTotals(carts)[k];
+  return Math.max(0, Math.min(room, current + Math.max(0, unplaced)));
+}
+
+/* Largest quantity allowed for one special meal line (specials alone may not exceed 40). */
+function specialMax(cart, si) {
+  return Math.max(0, CAP - (specialsTotal(cart) - toInt(cart.specials[si].qty)));
+}
+
+/* Remove standard meals from a cart until it fits in 40 (largest choice first).
+   Removed meals become unallocated. Used when automatic distribution is paused. */
+function trimCart(cart) {
+  var over = cartTotal(cart) - CAP;
+  while (over > 0) {
+    var k = null;
+    KEYS.forEach(function (key) { if (toInt(cart.std[key]) > 0 && (k === null || cart.std[key] > cart.std[k])) k = key; });
+    if (k === null) break;
+    cart.std[k] = toInt(cart.std[k]) - 1; over--;
+  }
+}
+</script>
+
+<!-- ===================== APP ===================== -->
+<script>
+(function () {
+  var LS_KEY = 'crewMealManager.v1';
+  var LS_LAST = 'crewMealManager.lastOpen';
+  var store = { flights: {}, deleted: [] };
+  var curId = null;
+  var cloud = { col: null, status: 'local', writing: {}, dirty: {}, timers: {} };
+  var app = document.getElementById('app');
+  var ident = { state: 'checking', name: '' };
+  var screen = 'start';
+
+  function whoHTML() {
+    if (ident.state === 'checking') return 'Checking sign-in…';
+    if (ident.state === 'signed') return 'Signed in' + (ident.name ? ' as<b>' + esc(ident.name) + '</b>' : ' with your Claude account');
+    return 'Not signed in — flights will be saved on this device only.';
+  }
+  function renderStart() {
+    curId = null; screen = 'start';
+    app.innerHTML = '<div class="start"><div class="logo">CMM</div><h1>Crew Meal Manager</h1>' +
+      '<p class="tagline">Economy meals and cart planning</p>' +
+      '<div class="who" id="who">' + whoHTML() + '</div>' +
+      '<button class="btn" data-act="start">Start</button></div>';
+    window.scrollTo(0, 0);
+  }
+  function updateWho() { var w = document.getElementById('who'); if (w) w.innerHTML = whoHTML(); }
+
+  /* ---------- helpers ---------- */
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function uid(p) { return (p || 'x') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fmtDate(s) {
+    if (!s) return 'No date';
+    var p = s.split('-'); if (p.length !== 3) return s;
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function flight() { return curId ? store.flights[curId] : null; }
+  function totals(f) { return { A: toInt(f.choices.A.qty), B: toInt(f.choices.B.qty), C: toInt(f.choices.C.qty) }; }
+  function cname(f, k) { return (f.choices[k].name || '').trim() || ('Choice ' + k); }
+  function cartLabel(c, i) { return (c.name || '').trim() || ('Cart ' + (i + 1)); }
+  function numInput(attrs, val) {
+    return '<input class="num" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" ' + attrs + ' value="' + esc(val) + '">';
+  }
+
+  function newFlight() {
+    var now = Date.now();
+    return {
+      id: uid('f'), schemaVersion: 1, flightNumber: '', flightDate: today(),
+      choices: { A: { name: '', qty: 0 }, B: { name: '', qty: 0 }, C: { name: '', qty: 0 } },
+      cartCount: 0, carts: [], generated: false, autoMode: true, createdAt: now, updatedAt: now
+    };
+  }
+  function newCart() { return { id: uid('c'), name: '', specials: [], std: { A: 0, B: 0, C: 0 } }; }
+
+  /* ---------- storage: device first, account sync when available ---------- */
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (raw) { var d = JSON.parse(raw); store.flights = d.flights || {}; store.deleted = d.deleted || []; }
+    } catch (e) {}
+  }
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ schemaVersion: 1, flights: store.flights, deleted: store.deleted })); } catch (e) {}
+  }
+  function setLast(id) { try { if (id) localStorage.setItem(LS_LAST, id); else localStorage.removeItem(LS_LAST); } catch (e) {} }
+  function getLast() { try { return localStorage.getItem(LS_LAST); } catch (e) { return null; } }
+
+  function touch(f) {
+    f.updatedAt = Date.now();
+    saveLocal();
+    scheduleCloud(f.id);
+    var s = document.getElementById('saved'); if (s) s.textContent = 'Saved';
+  }
+
+  function scheduleCloud(id) {
+    if (!cloud.col) return;
+    clearTimeout(cloud.timers[id]);
+    cloud.timers[id] = setTimeout(function () { cloudWrite(id); }, 900);
+  }
+  function cloudWrite(id) {
+    if (!cloud.col) return;
+    if (cloud.writing[id]) { cloud.dirty[id] = true; return; }
+    var f = store.flights[id];
+    cloud.writing[id] = true; cloud.dirty[id] = false;
+    var p = f ? cloud.col.doc(id).set(JSON.parse(JSON.stringify(f))) : cloud.col.doc(id).delete();
+    p.then(function () {
+      if (!f) store.deleted = store.deleted.filter(function (x) { return x !== id; }), saveLocal();
+    }).catch(function (e) {
+      if (e && (e.code === 'revoked' || e.code === 'invalid_argument' || e.code === 'not_granted')) { cloud.col = null; cloud.status = 'local'; }
+    }).then(function () {
+      cloud.writing[id] = false;
+      if (cloud.dirty[id]) cloudWrite(id);
+    });
+  }
+
+  function initCloud() {
+    var c = window.claude;
+    if (!c || typeof c.use !== 'function') { ident.state = 'none'; updateWho(); return; }
+    Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+      var db = r[0], user = r[1];
+      if (user && typeof user.me === 'function') {
+        Promise.resolve(user.me()).then(function (me) {
+          ident.state = 'signed'; ident.name = (me && me.name) || ''; updateWho();
+        }).catch(function () { ident.state = 'signed'; updateWho(); });
+      } else { ident.state = db ? 'signed' : 'none'; updateWho(); }
+      if (!db || !user || typeof user.id !== 'function') return null;
+      return Promise.resolve(user.id()).then(function (id) {
+        if (!id) return null;
+        var col = db.collection('data/users/' + id);
+        var timeout = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 10000); });
+        return Promise.race([col.get(), timeout]).then(function (snap) { return { col: col, snap: snap }; });
+      });
+    }).then(function (res) {
+      if (!res) return;
+      cloud.col = res.col; cloud.status = 'cloud';
+      var remoteIds = {};
+      var changedOpen = false, changed = false;
+      res.snap.docs.forEach(function (d) {
+        if (!d.exists) return;
+        var rf = JSON.parse(JSON.stringify(d.data()));
+        if (!rf || !rf.id) return;
+        remoteIds[rf.id] = true;
+        if (store.deleted.indexOf(rf.id) >= 0) { cloudWrite(rf.id); return; }
+        var lf = store.flights[rf.id];
+        if (!lf || (rf.updatedAt || 0) > (lf.updatedAt || 0)) {
+          store.flights[rf.id] = rf; changed = true;
+          if (rf.id === curId) changedOpen = true;
+        }
+      });
+      Object.keys(store.flights).forEach(function (id) {
+        var lf = store.flights[id];
+        if (!remoteIds[id]) cloudWrite(id);
+        else if (lf && res.snap.docs.some(function (d) { return d.id === id && (d.data().updatedAt || 0) < (lf.updatedAt || 0); })) cloudWrite(id);
+      });
+      store.deleted.forEach(function (id) { if (!remoteIds[id]) store.deleted = store.deleted.filter(function (x) { return x !== id; }); });
+      saveLocal();
+      var ae = document.activeElement;
+      var typing = ae && ae.tagName === 'INPUT';
+      if (screen === 'home' && changed) renderHome();
+      else if (changedOpen && !typing) renderFlight();
+      var fs = document.getElementById('syncnote'); if (fs) fs.textContent = syncText();
+    }).catch(function () {});
+  }
+  function syncText() {
+    return cloud.status === 'cloud' ? 'Flights are saved to your account and on this device.' : 'Flights are saved on this device.';
+  }
+
+  /* ---------- dialog ---------- */
+  var dlg = document.getElementById('dlg'), dlgYes = document.getElementById('dlg-yes'), dlgNo = document.getElementById('dlg-no');
+  var dlgCb = null;
+  function ask(msg, yesLabel, cb, danger) {
+    document.getElementById('dlg-msg').textContent = msg;
+    dlgYes.textContent = yesLabel || 'Continue';
+    dlgYes.className = 'btn small' + (danger ? ' danger' : '');
+    dlgCb = cb; dlg.hidden = false;
+  }
+  dlgNo.onclick = function () { dlg.hidden = true; dlgCb = null; };
+  dlgYes.onclick = function () { dlg.hidden = true; var cb = dlgCb; dlgCb = null; if (cb) cb(); };
+
+  /* ---------- home ---------- */
+  function renderHome() {
+    curId = null; setLast(null); screen = 'home';
+    var list = Object.keys(store.flights).map(function (k) { return store.flights[k]; })
+      .sort(function (a, b) { return (b.flightDate || '').localeCompare(a.flightDate || '') || b.updatedAt - a.updatedAt; });
+    var h = '<header class="top"><h1>Crew Meal Manager</h1></header>';
+    h += '<button class="btn" data-act="new">+ New Flight</button>';
+    h += '<h2>Saved flights</h2>';
+    if (!list.length) {
+      h += '<div class="card empty">No flights yet. Tap <b>New Flight</b> to start.</div>';
+    } else {
+      h += '<div class="card">';
+      list.forEach(function (f, i) {
+        var t = totals(f), tot = t.A + t.B + t.C;
+        h += '<div class="flight"' + (i ? ' style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px"' : '') + '>' +
+          '<button class="open" data-act="open" data-id="' + esc(f.id) + '"><div class="fno">' + esc(f.flightNumber || 'Untitled flight') + '</div>' +
+          '<div class="meta">' + esc(fmtDate(f.flightDate)) + ' · ' + tot + ' meals · ' + (f.generated ? f.carts.length + ' carts' : 'no carts yet') + '</div></button>' +
+          '<button class="x" data-act="delflight" data-id="' + esc(f.id) + '" aria-label="Delete flight">×</button></div>';
+      });
+      h += '</div>';
+    }
+    h += '<p class="foot" id="syncnote">' + syncText() + '</p>';
+    app.innerHTML = h;
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- flight screen ---------- */
+  function renderFlight() {
+    var f = flight(); if (!f) return renderHome();
+    var h = '<header class="top"><button class="back" data-act="home">‹ Flights</button><h1>' + esc(f.flightNumber || 'New flight') + '</h1><span class="saved" id="saved">Saved</span></header>';
+
+    h += '<h2>1 · Flight details</h2><div class="card"><div class="grid2">' +
+      '<div><label class="f" for="fn">Flight number</label><input id="fn" class="upper" data-f="fn" autocapitalize="characters" autocomplete="off" maxlength="10" placeholder="e.g. QR 1" value="' + esc(f.flightNumber) + '"></div>' +
+      '<div><label class="f" for="fd">Flight date</label><input id="fd" type="date" data-f="fd" value="' + esc(f.flightDate) + '"></div>' +
+      '</div></div>';
+
+    h += '<h2>2 · Standard meal choices</h2><div class="card">';
+    KEYS.forEach(function (k) {
+      h += '<div class="row"><span class="tag">' + k + '</span>' +
+        '<input data-f="cn" data-k="' + k + '" maxlength="40" placeholder="Choice ' + k + ' name" value="' + esc(f.choices[k].name) + '">' +
+        numInput('data-f="cq" data-k="' + k + '" aria-label="Choice ' + k + ' quantity"', f.choices[k].qty) + '</div>';
+    });
+    h += '<div class="totalline"><span>Total standard casseroles</span><span class="big" id="stdTotal">0</span></div></div>';
+
+    h += '<h2>3 · Carts</h2><div class="card">' +
+      '<div class="row"><label class="lbl" for="cc" style="white-space:normal">How many carts do you need?</label>' +
+      numInput('id="cc" data-f="cc" maxlength="2"', f.cartCount || '') + '</div>' +
+      '<div id="ccmsg"></div>' +
+      '<button class="btn" data-act="generate" style="margin-top:10px">SAVE &amp; GENERATE CARTS</button></div>';
+
+    if (f.generated) {
+      h += '<h2>Summary</h2><div id="summary"></div>';
+      h += '<h2>Carts</h2><div id="carts">' + f.carts.map(function (c, i) { return cartHTML(f, i); }).join('') + '</div>';
+    }
+    app.innerHTML = h;
+    refresh(true);
+  }
+
+  function cartHTML(f, i) {
+    var c = f.carts[i];
+    var h = '<div class="card cart" id="cart-' + i + '">' +
+      '<div class="cart-head"><input data-f="cartname" data-ci="' + i + '" class="upper" autocapitalize="characters" maxlength="20" placeholder="Cart name" value="' + esc(c.name) + '">' +
+      '<span class="pill ok" id="pill-' + i + '"></span></div>';
+    h += '<div class="sub" style="margin-top:0">Standard meals</div>';
+    KEYS.forEach(function (k) {
+      h += '<div class="row"><span class="tag">' + k + '</span><span class="lbl" data-cl="' + k + '"></span>' +
+        numInput('data-f="std" data-ci="' + i + '" data-k="' + k + '" aria-label="Choice ' + k + ' in cart"', toInt(c.std[k])) + '</div>';
+    });
+    h += '<div class="sub">Special meals</div>';
+    c.specials.forEach(function (s, si) {
+      h += '<div class="sp-row"><input class="spn upper" list="spml" data-f="spn" data-ci="' + i + '" data-si="' + si + '" autocapitalize="characters" autocomplete="off" maxlength="12" placeholder="e.g. AVML" value="' + esc(s.name) + '">' +
+        numInput('data-f="spq" data-ci="' + i + '" data-si="' + si + '" maxlength="2" aria-label="Special meal quantity"', toInt(s.qty)) +
+        '<button class="x" data-act="delsp" data-ci="' + i + '" data-si="' + si + '" aria-label="Remove special meal">×</button></div>';
+    });
+    h += '<button class="btn ghost small" data-act="addsp" data-ci="' + i + '">+ Special Meal</button>';
+    h += '<div class="cart-foot"><span id="foot-' + i + '"></span><span class="big" id="tot-' + i + '"></span></div></div>';
+    return h;
+  }
+
+  function summaryHTML(f) {
+    var t = totals(f), a = allocatedTotals(f.carts);
+    var reqT = t.A + t.B + t.C, alT = a.A + a.B + a.C;
+    var spT = f.carts.reduce(function (s, c) { return s + specialsTotal(c); }, 0);
+    var h = '';
+    h += '<div class="mode"><span class="dot' + (f.autoMode ? '' : ' off') + '"></span>' +
+      (f.autoMode ? 'Automatic distribution is on' : 'Manual changes kept — automatic distribution paused') + '</div>';
+
+    var un = 0, ov = 0;
+    KEYS.forEach(function (k) { var d = t[k] - a[k]; if (d > 0) un += d; else ov -= d; });
+    if (ov > 0) {
+      h += '<div class="notice bad">' + ov + ' more standard meal' + (ov === 1 ? ' is' : 's are') + ' in carts than requested. Lower cart quantities or redistribute.</div>';
+    }
+    if (un > 0) {
+      var cap = f.carts.reduce(function (s, c) { return s + Math.max(0, CAP - cartTotal(c)); }, 0);
+      if (f.autoMode || cap === 0) {
+        h += '<div class="notice bad">' + un + ' meal' + (un === 1 ? '' : 's') + ' unallocated — not enough cart space. Add carts or reduce quantities.</div>';
+      } else {
+        h += '<div class="notice warn">' + un + ' meal' + (un === 1 ? ' is' : 's are') + ' not in any cart yet. Add them manually or redistribute.</div>';
+      }
+    }
+    if (un === 0 && ov === 0 && reqT > 0) h += '<div class="notice ok">All ' + reqT + ' standard meals are allocated.</div>';
+
+    h += '<div class="card"><table class="sum"><tr><th>Choice</th><th>Requested</th><th>Allocated</th><th>Left</th></tr>';
+    KEYS.forEach(function (k) {
+      var d = t[k] - a[k];
+      h += '<tr><td>' + k + ' · ' + esc(cname(f, k)) + '</td><td>' + t[k] + '</td><td>' + a[k] + '</td><td class="' + (d === 0 ? 'green' : 'red') + '">' + d + '</td></tr>';
+    });
+    h += '<tr class="tot"><td>Total</td><td>' + reqT + '</td><td>' + alT + '</td><td class="' + (reqT === alT ? 'green' : 'red') + '">' + (reqT - alT) + '</td></tr></table>' +
+      '<p class="hint">Special meals: ' + spT + ' · Cart space: ' + (f.carts.length * CAP) + ' (' + f.carts.length + ' × 40)</p></div>';
+
+    h += '<div class="card">';
+    f.carts.forEach(function (c, i) {
+      var tot = cartTotal(c), bad = tot > CAP;
+      var parts = KEYS.map(function (k) { return k + ' ' + toInt(c.std[k]); });
+      c.specials.forEach(function (s) { if (toInt(s.qty) > 0) parts.push(esc((s.name || 'Special').toUpperCase()) + ' ' + toInt(s.qty)); });
+      h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + '</div><div class="det">' + parts.join(' · ') + '</div></div>' +
+        '<span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + ' / 40</span></div>';
+    });
+    h += '</div>';
+    h += '<button class="btn ghost" data-act="redistribute">Redistribute automatically</button>';
+    return h;
+  }
+
+  /* Update numbers and labels in place, without rebuilding inputs (keeps the keyboard open). */
+  function refresh(force) {
+    var f = flight(); if (!f) return;
+    var ae = document.activeElement;
+    var t = totals(f);
+    var el = document.getElementById('stdTotal'); if (el) el.textContent = t.A + t.B + t.C;
+    var h1 = app.querySelector('header.top h1'); if (h1) h1.textContent = f.flightNumber || 'New flight';
+
+    var msg = document.getElementById('ccmsg');
+    if (msg) {
+      var m = '';
+      if (f.generated && f.cartCount && f.cartCount !== f.carts.length) m = '<p class="hint">Press SAVE &amp; GENERATE CARTS to change from ' + f.carts.length + ' to ' + f.cartCount + ' carts.</p>';
+      else if (!f.generated) m = '<p class="hint">Enter the number of carts, then press the button.</p>';
+      msg.innerHTML = m;
+    }
+    if (!f.generated) return;
+
+    var sum = document.getElementById('summary'); if (sum) sum.innerHTML = summaryHTML(f);
+    f.carts.forEach(function (c, i) {
+      var tot = cartTotal(c), bad = tot > CAP;
+      var card = document.getElementById('cart-' + i); if (!card) return;
+      card.classList.toggle('over', bad);
+      var pill = document.getElementById('pill-' + i);
+      pill.className = 'pill ' + (bad ? 'bad' : 'ok'); pill.textContent = tot + ' / 40';
+      document.getElementById('tot-' + i).textContent = tot;
+      document.getElementById('foot-' + i).innerHTML = bad
+        ? '<span class="red">Over by ' + (tot - CAP) + '</span>'
+        : '<span class="green">' + (CAP - tot) + ' left</span>';
+      card.querySelectorAll('[data-cl]').forEach(function (s) { s.textContent = cname(f, s.getAttribute('data-cl')); });
+      card.querySelectorAll('input[data-f="std"]').forEach(function (inp) {
+        if (force || inp !== ae) inp.value = toInt(c.std[inp.getAttribute('data-k')]);
+      });
+      card.querySelectorAll('input[data-f="spq"]').forEach(function (inp) {
+        var s = c.specials[+inp.getAttribute('data-si')]; if (s && (force || inp !== ae)) inp.value = toInt(s.qty);
+      });
+    });
+  }
+
+  function autoDistribute(f) {
+    var r = distribute(totals(f), f.carts);
+    r.alloc.forEach(function (a, i) { f.carts[i].std = a; });
+  }
+
+  /* Read a numeric field: digits only, clamp to [0, max]. Rewrites the field only if needed. */
+  function readNum(inp, max) {
+    var raw = inp.value, digits = raw.replace(/\D/g, '');
+    var v = digits === '' ? 0 : parseInt(digits, 10);
+    if (v > max) v = max;
+    var shown = digits === '' ? '' : String(v);
+    if (shown !== raw) inp.value = shown;
+    return v;
+  }
+
+  /* ---------- events ---------- */
+  app.addEventListener('input', function (e) {
+    var inp = e.target, f = flight(); if (!f || !inp.dataset || !inp.dataset.f) return;
+    var k = inp.dataset.k, ci = +inp.dataset.ci, si = +inp.dataset.si, cart = f.carts[ci];
+    switch (inp.dataset.f) {
+      case 'fn': f.flightNumber = inp.value.toUpperCase().trim(); break;
+      case 'fd': f.flightDate = inp.value; break;
+      case 'cn': f.choices[k].name = inp.value; break;
+      case 'cq':
+        f.choices[k].qty = readNum(inp, 9999);
+        if (f.generated && f.autoMode) autoDistribute(f);
+        break;
+      case 'cc': f.cartCount = readNum(inp, 60); break;
+      case 'cartname': cart.name = inp.value.toUpperCase(); break;
+      case 'std':
+        cart.std[k] = readNum(inp, manualMax(totals(f), f.carts, ci, k));
+        f.autoMode = false;
+        break;
+      case 'spn': cart.specials[si].name = inp.value.toUpperCase().trim(); break;
+      case 'spq':
+        cart.specials[si].qty = readNum(inp, specialMax(cart, si));
+        if (f.autoMode) autoDistribute(f); else trimCart(cart);
+        break;
+      default: return;
+    }
+    touch(f); refresh(false);
+  });
+  app.addEventListener('change', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('num')) {
+      var f = flight();
+      if (f && e.target.dataset.f === 'cq') e.target.value = toInt(f.choices[e.target.dataset.k].qty);
+      refresh(true);
+    }
+  });
+
+  app.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]'); if (!b) return;
+    var act = b.dataset.act, f = flight();
+    if (act === 'start') {
+      var lastId = getLast();
+      if (lastId && store.flights[lastId]) { curId = lastId; renderFlight(); window.scrollTo(0, 0); } else renderHome();
+      return;
+    }
+    if (act === 'new') { var nf = newFlight(); store.flights[nf.id] = nf; curId = nf.id; setLast(nf.id); touch(nf); renderFlight(); window.scrollTo(0, 0); return; }
+    if (act === 'open') { curId = b.dataset.id; setLast(curId); renderFlight(); window.scrollTo(0, 0); return; }
+    if (act === 'home') { renderHome(); return; }
+    if (act === 'delflight') {
+      var df = store.flights[b.dataset.id];
+      ask('Delete flight ' + (df.flightNumber || 'Untitled') + ' (' + fmtDate(df.flightDate) + ')? This cannot be undone.', 'Delete', function () {
+        delete store.flights[df.id];
+        if (store.deleted.indexOf(df.id) < 0) store.deleted.push(df.id);
+        saveLocal(); cloudWrite(df.id); renderHome();
+      }, true);
+      return;
+    }
+    if (!f) return;
+    if (act === 'generate') return generate(f);
+    if (act === 'redistribute') {
+      var go = function () { f.autoMode = true; autoDistribute(f); touch(f); refresh(true); };
+      if (!f.autoMode) ask('Redistribute all standard meals automatically? Your manual changes to Choice A, B and C in the carts will be replaced. Special meals stay where they are.', 'Redistribute', go);
+      else go();
+      return;
+    }
+    if (act === 'addsp') {
+      var ci = +b.dataset.ci, cc = f.carts[ci];
+      cc.specials.push({ id: uid('s'), name: '', qty: 0 });
+      cc.specials[cc.specials.length - 1].qty = Math.min(1, specialMax(cc, cc.specials.length - 1));
+      if (f.autoMode) autoDistribute(f); else trimCart(cc);
+      touch(f); redrawCart(f, ci);
+      var ins = document.querySelectorAll('#cart-' + ci + ' input[data-f="spn"]'); if (ins.length) ins[ins.length - 1].focus();
+      return;
+    }
+    if (act === 'delsp') {
+      var c2 = +b.dataset.ci; f.carts[c2].specials.splice(+b.dataset.si, 1);
+      if (f.autoMode) autoDistribute(f);
+      touch(f); redrawCart(f, c2); return;
+    }
+  });
+
+  function redrawCart(f, ci) {
+    var old = document.getElementById('cart-' + ci); if (!old) return;
+    var tmp = document.createElement('div'); tmp.innerHTML = cartHTML(f, ci);
+    old.replaceWith(tmp.firstChild);
+    refresh(true);
+  }
+
+  function generate(f) {
+    var n = toInt(f.cartCount);
+    var msg = document.getElementById('ccmsg');
+    if (n < 1) { msg.innerHTML = '<p class="err">Enter how many carts you need (1–60).</p>'; document.getElementById('cc').focus(); return; }
+    var removed = f.carts.slice(n);
+    var removedHasData = removed.some(function (c) { return (c.name || '').trim() || c.specials.length; });
+    var go = function () {
+      while (f.carts.length < n) f.carts.push(newCart());
+      f.carts.length = n;
+      f.generated = true; f.autoMode = true;
+      autoDistribute(f); touch(f);
+      var y = window.scrollY; renderFlight(); window.scrollTo(0, y);
+      var s = document.getElementById('summary'); if (s) s.scrollIntoView({ block: 'start' });
+    };
+    if (removedHasData) ask('Going to ' + n + ' carts removes ' + removed.length + ' cart(s), including their names and special meals. Continue?', 'Remove carts', go, true);
+    else if (f.generated && !f.autoMode) ask('This will redistribute all standard meals and replace your manual changes. Special meals stay where they are.', 'Generate', go);
+    else go();
+  }
+
+  /* ---------- start ---------- */
+  loadLocal();
+  renderStart();
+  initCloud();
+  setTimeout(function () { if (ident.state === 'checking') { ident.state = 'none'; updateWho(); } }, 10000);
+})();
+</script>
+</body>
+</html>
