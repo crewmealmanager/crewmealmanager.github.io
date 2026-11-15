@@ -224,7 +224,8 @@ function trimCart(cart) {
   var CONFIG = {
     supabaseUrl: 'https://mvuokgoidtnhxodrdmno.supabase.co',
     supabaseKey: 'sb_publishable_pF_f-s3nEfu-mK2StxZQ2g_ccUIJsFS',   // publishable key: meant to be public
-    checkoutUrl: ''    // payment page link, added when subscriptions go live
+    checkoutUrl: 'https://buy.polar.sh/polar_cl_lNBz1oj0uLPRyHiT7N2TQDuX7PIId3QOFvoR21KWFNl',
+    portalUrl: 'https://polar.sh/crewmeal/portal'
   };
   var CONFIGURED = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
 
@@ -251,6 +252,11 @@ function trimCart(cart) {
   function trialDaysLeft() { var a = acct.access; return a ? Math.max(0, Math.ceil((a.trialEndsAt - nowMs()) / 86400000)) : 0; }
   function canUse() { return acct.state === 'local' || (acct.state === 'signedin' && accessOk()); }
 
+  function subscribeHref() {
+    return CONFIG.checkoutUrl + (CONFIG.checkoutUrl.indexOf('?') < 0 ? '?' : '&') + 'customer_email=' + encodeURIComponent(acct.email || '');
+  }
+  function isSubscribed() { var a = acct.access; return !!(a && a.status === 'active' && (!a.subEndsAt || a.subEndsAt > nowMs())); }
+  var justPaid = /[?&]paid=1/.test(location.search);
   function startBody() {
     var s = acct.state, h = '';
     if (s === 'local') return '<div class="who">Sign-in isn\'t set up yet. Flights are saved on this device only.</div><button class="btn" data-act="start">Start</button>';
@@ -271,10 +277,18 @@ function trimCart(cart) {
       if (acct.offline) plan += (plan ? ' · ' : '') + 'offline';
       if (plan) h += '<div class="plan">' + plan + '</div>';
       h += '<button class="btn" data-act="start">Start</button>';
+      if (isSubscribed()) h += '<a class="link" style="display:inline-block" href="' + esc(CONFIG.portalUrl) + '">Manage subscription</a>';
+      else if (CONFIG.checkoutUrl) h += '<a class="link" style="display:inline-block" href="' + esc(subscribeHref()) + '">Subscribe now · 15 QAR / month</a>';
     } else {
-      h += '<div class="notice warn" style="text-align:left">Your free month has ended. ' +
-        (CONFIG.checkoutUrl ? 'Subscribe to keep using Crew Meal Manager. Your saved flights are kept.' : 'Subscriptions are opening soon. Your saved flights are kept.') + '</div>';
-      if (CONFIG.checkoutUrl) h += '<a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="' + esc(CONFIG.checkoutUrl) + '">Subscribe</a>';
+      if (justPaid) {
+        h += '<div class="notice ok" style="text-align:left">Thank you! Your payment is being confirmed. This page unlocks in a few seconds.</div>';
+      } else {
+        var lapsed = acct.access && acct.access.status === 'active';
+        h += '<div class="notice warn" style="text-align:left">' + (lapsed ? 'Your subscription has ended. ' : 'Your free month has ended. ') +
+          (CONFIG.checkoutUrl ? 'Subscribe for 15 QAR a month to keep using Crew Meal Manager. Your saved flights are kept.' : 'Subscriptions are opening soon. Your saved flights are kept.') + '</div>';
+        if (CONFIG.checkoutUrl) h += '<a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="' + esc(subscribeHref()) + '">Subscribe · 15 QAR / month</a>' +
+          '<p class="hint" style="text-align:center">Use the same email at checkout: ' + esc(acct.email || '') + '</p>';
+      }
     }
     return h + '<button class="link" data-act="signout">Sign out</button>';
   }
@@ -454,7 +468,21 @@ function trimCart(cart) {
     cloud = { api: makeApi(user.id), writing: {}, dirty: {}, timers: {}, failed: {} };
     useStore(user.id); saveAcct();
     renderStart();
-    refreshAccess().then(syncDown);
+    refreshAccess().then(syncDown).then(waitForPayment);
+  }
+  /* Back from the payment page: Polar tells the server within seconds; check a few times. */
+  function waitForPayment() {
+    if (!justPaid) return;
+    var tries = 0;
+    (function again() {
+      if (isSubscribed() || tries++ >= 12) {
+        justPaid = false;
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+        if (screen === 'start') renderStart();
+        return;
+      }
+      setTimeout(function () { refreshAccess().then(again); }, 5000);
+    })();
   }
   function signedOut(note) {
     clearAcct();
