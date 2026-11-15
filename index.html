@@ -73,6 +73,10 @@
   .cs{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
   .cs:first-child{border-top:0;padding-top:0}
   .cs .nm{font-weight:700;font-size:14px}
+  .cs .nm .rws{font-weight:600;color:var(--accent);margin-left:6px;font-size:13px}
+  .rows-row{display:flex;align-items:center;gap:6px;margin:0 0 6px}
+  .rows-row span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .rows-row input.rows-in{flex:1;min-width:0;height:34px;font-size:16px;padding:0 8px}
   .cs .det{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
   .cs .grow{flex:1;min-width:0}
   .pill{flex:none;border-radius:999px;padding:3px 9px;font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -789,7 +793,8 @@ function trimCart(cart) {
     var c = f.carts[i];
     var h = '<div class="card cart" id="cart-' + i + '">' +
       '<div class="cart-head">' + cartNameHTML(f, i) +
-      '<span class="pill ok" id="pill-' + i + '"></span></div>';
+      '<span class="pill ok" id="pill-' + i + '"></span></div>' +
+      '<label class="rows-row"><span>Rows</span><input data-f="rows" data-ci="' + i + '" class="rows-in" inputmode="text" autocomplete="off" maxlength="20" placeholder="e.g. 30-35" value="' + esc(c.rows || '') + '"></label>';
     h += '<div class="sub" style="margin-top:0">Standard meals</div>';
     KEYS.forEach(function (k) {
       h += '<div class="row"><span class="tag">' + k + '</span><span class="lbl" data-cl="' + k + '"></span>' +
@@ -843,7 +848,7 @@ function trimCart(cart) {
       var tot = cartTotal(c), bad = tot > CAP;
       var parts = KEYS.map(function (k) { return k + ' ' + toInt(c.std[k]); });
       c.specials.forEach(function (s) { if (toInt(s.qty) > 0) parts.push(esc((s.name || 'Special').toUpperCase()) + ' ' + toInt(s.qty)); });
-      h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + '</div><div class="det">' + parts.join(' · ') + '</div></div>' +
+      h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + ((c.rows || '').trim() ? '<span class="rws">Rows ' + esc(c.rows.trim()) + '</span>' : '') + '</div><div class="det">' + parts.join(' · ') + '</div></div>' +
         '<span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + ' / 40</span></div>';
     });
     h += '</div>';
@@ -928,6 +933,14 @@ function trimCart(cart) {
       case 'std':
         cart.std[k] = readNum(inp, manualMax(totals(f), f.carts, ci, k));
         f.autoMode = false;
+        break;
+      case 'rows':
+        cart.rows = inp.value;
+        var mate = f.carts[ci ^ 1];
+        if (mate) {
+          mate.rows = inp.value;
+          var mi2 = document.querySelector('#cart-' + (ci ^ 1) + ' input[data-f="rows"]'); if (mi2) mi2.value = inp.value;
+        }
         break;
       case 'spn': cart.specials[si].name = inp.value.toUpperCase().trim(); break;
       case 'spsel':
@@ -1041,7 +1054,7 @@ function trimCart(cart) {
     var removed = f.carts.slice(n);
     var removedHasData = removed.some(function (c) { return (c.name || '').trim() || c.specials.length; });
     var go = function () {
-      while (f.carts.length < n) f.carts.push(newCart());
+      while (f.carts.length < n) { var nc = newCart(), pm = f.carts[f.carts.length ^ 1]; if (pm && pm.rows) nc.rows = pm.rows; f.carts.push(nc); }
       f.carts.length = n;
       f.generated = true; f.autoMode = true;
       autoDistribute(f); touch(f);
