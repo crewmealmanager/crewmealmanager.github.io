@@ -73,6 +73,9 @@
   .cs{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
   .cs:first-child{border-top:0;padding-top:0}
   .cs .nm{font-weight:700;font-size:14px}
+  .cs .nt{font-size:12px;color:var(--ink);margin-top:2px;font-style:italic;white-space:pre-wrap;word-break:break-word}
+  textarea.cart-notes{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:16px;color:var(--ink);border:1px solid #cfd5dc;border-radius:10px;padding:6px 8px;resize:vertical;min-height:52px;margin-bottom:6px}
+  textarea.cart-notes:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,53,87,.15)}
   .cs .nm .rws{font-weight:600;color:var(--accent);margin-left:6px;font-size:13px}
   .rows-row{display:flex;align-items:center;gap:6px;margin:0 0 6px}
   .rows-row span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -808,6 +811,7 @@ function trimCart(cart) {
         '<button class="x" data-act="delsp" data-ci="' + i + '" data-si="' + si + '" aria-label="Remove special meal">×</button></div>';
     });
     h += '<button class="btn ghost small" data-act="addsp" data-ci="' + i + '">+ Special Meal</button>';
+    h += '<div class="sub">Notes</div><textarea class="cart-notes" data-f="notes" data-ci="' + i + '" rows="2" maxlength="300" placeholder="Anything to remember…">' + esc(c.notes || '') + '</textarea>';
     h += '<div class="cart-foot"><span id="foot-' + i + '"></span><span class="big" id="tot-' + i + '"></span></div></div>';
     return h;
   }
@@ -848,7 +852,7 @@ function trimCart(cart) {
       var tot = cartTotal(c), bad = tot > CAP;
       var parts = KEYS.map(function (k) { return k + ' ' + toInt(c.std[k]); });
       c.specials.forEach(function (s) { if (toInt(s.qty) > 0) parts.push(esc((s.name || 'Special').toUpperCase()) + ' ' + toInt(s.qty)); });
-      h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + ((c.rows || '').trim() ? '<span class="rws">Rows ' + esc(c.rows.trim()) + '</span>' : '') + '</div><div class="det">' + parts.join(' · ') + '</div></div>' +
+      h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + ((c.rows || '').trim() ? '<span class="rws">Rows ' + esc(c.rows.trim()) + '</span>' : '') + '</div><div class="det">' + parts.join(' · ') + '</div>' + ((c.notes || '').trim() ? '<div class="nt">📝 ' + esc(c.notes.trim()) + '</div>' : '') + '</div>' +
         '<span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + ' / 40</span></div>';
     });
     h += '</div>';
@@ -934,6 +938,7 @@ function trimCart(cart) {
         cart.std[k] = readNum(inp, manualMax(totals(f), f.carts, ci, k));
         f.autoMode = false;
         break;
+      case 'notes': cart.notes = inp.value; break;
       case 'rows':
         cart.rows = inp.value;
         var mate = f.carts[ci ^ 1];
