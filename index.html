@@ -119,8 +119,14 @@
   #carts .sp-row input.spn{padding:0 6px}
   .sp-row{flex-wrap:wrap}
   .sp-row select.spsel{flex:1;min-width:0}
-  #carts .sp-row select.spsel{height:36px;padding-left:6px;padding-right:24px;background-position:right 6px center}
+  #carts .sp-row select.spsel{height:36px;padding-left:5px;padding-right:16px;background-position:right 4px center;background-size:9px 6px;font-size:15px}
+  #carts .sp-row .x{width:26px}
   .sp-row input.spn.sp-manual{flex:1 1 100%;order:3}
+  .sp-row select.qtysel{flex:none;width:72px;text-align:center;padding:0 22px 0 8px}
+  #carts .sp-row select.qtysel{width:50px;height:36px;padding:0 15px 0 5px;background-position:right 4px center;background-size:9px 6px;font-size:15px}
+  #carts .sp-row select.qtysel.is-other{font-size:11px;padding:0 13px 0 3px}
+  .sp-row input.num.qty-manual{order:4;flex:1 1 100%;width:auto}
+  #carts .sp-row input.num.qty-manual{width:auto}
   #carts .x{width:28px;height:36px;font-size:17px;border-radius:8px}
   #carts .btn.small{min-height:34px;font-size:13px;padding:0 4px}
   #carts .cart-foot{margin-top:6px;padding-top:6px;font-size:12px;align-items:center}
@@ -762,10 +768,22 @@ function trimCart(cart) {
     var name = (s.name || '').trim().toUpperCase();
     var manual = !!s.manualName || (name !== '' && SP_NAMES.indexOf(name) < 0);
     var h = '<select class="cartsel spsel' + (!name && !manual ? ' empty' : '') + '" data-f="spsel" data-ci="' + i + '" data-si="' + si + '" aria-label="Special meal">' +
-      '<option value=""' + (!name && !manual ? ' selected' : '') + '>Choose meal</option>';
+      '<option value=""' + (!name && !manual ? ' selected' : '') + '>Meal</option>';
     SP_NAMES.forEach(function (n) { h += '<option value="' + n + '"' + (!manual && name === n ? ' selected' : '') + '>' + n + '</option>'; });
     h += '<option value="__other"' + (manual ? ' selected' : '') + '>Other (type it)…</option></select>';
     return { sel: h, manual: manual ? '<input class="spn upper sp-manual" data-f="spn" data-ci="' + i + '" data-si="' + si + '" autocapitalize="characters" autocomplete="off" maxlength="12" placeholder="Type meal code" value="' + esc(s.name) + '">' : '' };
+  }
+  var SP_QTY_MAX = 25;
+  function spQtyHTML(c, i, si, s) {
+    var q = toInt(s.qty), max = specialMax(c, si);
+    var manual = !!s.manualQty || q > SP_QTY_MAX;
+    var h = '<select class="cartsel qtysel' + (manual ? ' is-other' : '') + '" data-f="spqsel" data-ci="' + i + '" data-si="' + si + '" aria-label="Special meal quantity">' +
+      '<option value="__other"' + (manual ? ' selected' : '') + '>Other</option>';
+    if (!manual && q === 0) h += '<option value="0" selected>0</option>';
+    for (var n = 1; n <= SP_QTY_MAX; n++) h += '<option value="' + n + '"' + (!manual && q === n ? ' selected' : '') + (n > max ? ' disabled' : '') + '>' + n + '</option>';
+    h += '</select>';
+    var inp = manual ? '<input class="num qty-manual" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" data-f="spq" data-ci="' + i + '" data-si="' + si + '" placeholder="Type quantity" aria-label="Special meal quantity" value="' + (q || '') + '">' : '';
+    return h + inp;
   }
   function cartHTML(f, i) {
     var c = f.carts[i];
@@ -781,7 +799,7 @@ function trimCart(cart) {
     c.specials.forEach(function (s, si) {
       var sp = spNameHTML(i, si, s);
       h += '<div class="sp-row">' + sp.sel + sp.manual +
-        numInput('data-f="spq" data-ci="' + i + '" data-si="' + si + '" maxlength="2" aria-label="Special meal quantity"', toInt(s.qty)) +
+        spQtyHTML(c, i, si, s) +
         '<button class="x" data-act="delsp" data-ci="' + i + '" data-si="' + si + '" aria-label="Remove special meal">×</button></div>';
     });
     h += '<button class="btn ghost small" data-act="addsp" data-ci="' + i + '">+ Special Meal</button>';
@@ -918,6 +936,14 @@ function trimCart(cart) {
         else { spx.manualName = false; spx.name = inp.value; }
         touch(f); redrawCart(f, ci);
         if (inp.value === '__other') { var mi = document.querySelector('#cart-' + ci + ' input[data-f="spn"][data-si="' + si + '"]'); if (mi) mi.focus(); }
+        return;
+      case 'spqsel':
+        var spq = cart.specials[si];
+        if (inp.value === '__other') spq.manualQty = true;
+        else { spq.manualQty = false; spq.qty = Math.min(toInt(inp.value), specialMax(cart, si)); }
+        if (f.autoMode) autoDistribute(f); else trimCart(cart);
+        touch(f); redrawCart(f, ci);
+        if (inp.value === '__other') { var qi = document.querySelector('#cart-' + ci + ' input[data-f="spq"][data-si="' + si + '"]'); if (qi) { qi.focus(); qi.select(); } }
         return;
       case 'spq':
         cart.specials[si].qty = readNum(inp, specialMax(cart, si));
