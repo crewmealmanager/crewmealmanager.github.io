@@ -304,15 +304,15 @@ function trimCart(cart) {
       if (plan) h += '<div class="plan">' + plan + '</div>';
       h += '<button class="btn" data-act="start">Start</button>';
       if (isSubscribed()) h += '<a class="link" style="display:inline-block" href="' + esc(CONFIG.portalUrl) + '">Manage subscription</a>';
-      else if (CONFIG.checkoutUrl) h += '<a class="link" style="display:inline-block" href="' + esc(subscribeHref()) + '">Subscribe now · 15 QAR / month</a>';
+      else if (CONFIG.checkoutUrl) h += '<a class="link" style="display:inline-block" href="' + esc(subscribeHref()) + '">Subscribe now · 10 QAR / month</a>';
     } else {
       if (justPaid) {
         h += '<div class="notice ok" style="text-align:left">Thank you! Your payment is being confirmed. This page unlocks in a few seconds.</div>';
       } else {
         var lapsed = acct.access && acct.access.status === 'active';
         h += '<div class="notice warn" style="text-align:left">' + (lapsed ? 'Your subscription has ended. ' : 'Your free month has ended. ') +
-          (CONFIG.checkoutUrl ? 'Subscribe for 15 QAR a month to keep using Crew Meal Manager. Your saved flights are kept.' : 'Subscriptions are opening soon. Your saved flights are kept.') + '</div>';
-        if (CONFIG.checkoutUrl) h += '<a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="' + esc(subscribeHref()) + '">Subscribe · 15 QAR / month</a>' +
+          (CONFIG.checkoutUrl ? 'Subscribe for 10 QAR a month to keep using Crew Meal Manager. Your saved flights are kept.' : 'Subscriptions are opening soon. Your saved flights are kept.') + '</div>';
+        if (CONFIG.checkoutUrl) h += '<a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="' + esc(subscribeHref()) + '">Subscribe · 10 QAR / month</a>' +
           '<p class="hint" style="text-align:center">Use the same email at checkout: ' + esc(acct.email || '') + '</p>';
       }
     }
