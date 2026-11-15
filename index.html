@@ -73,6 +73,8 @@
   .cs{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
   .cs:first-child{border-top:0;padding-top:0}
   .cs .nm{font-weight:700;font-size:14px}
+  .spml-lbl{font-weight:700}
+  .spml-lbl small{font-weight:400;color:var(--muted);font-size:12px}
   .cs .nt{font-size:12px;color:var(--ink);margin-top:2px;font-style:italic;white-space:pre-wrap;word-break:break-word}
   textarea.cart-notes{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:16px;color:var(--ink);border:1px solid #cfd5dc;border-radius:10px;padding:6px 8px;resize:vertical;min-height:52px;margin-bottom:6px}
   textarea.cart-notes:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,53,87,.15)}
@@ -739,7 +741,9 @@ function trimCart(cart) {
         '<input data-f="cn" data-k="' + k + '" maxlength="40" placeholder="Choice ' + k + ' name" value="' + esc(f.choices[k].name) + '">' +
         numInput('data-f="cq" data-k="' + k + '" aria-label="Choice ' + k + ' quantity"', f.choices[k].qty) + '</div>';
     });
-    h += '<div class="totalline"><span>Total standard casseroles</span><span class="big" id="stdTotal">0</span></div></div>';
+    h += '<div class="row"><span class="tag">S</span><span class="lbl spml-lbl">SPML <small>(total special meals)</small></span>' +
+      numInput('data-f="spt" aria-label="Total special meals"', toInt(f.spmlTotal)) + '</div>';
+    h += '<div class="totalline"><span>Total casseroles</span><span class="big" id="stdTotal">0</span></div></div>';
 
     h += '<h2>3 · Carts</h2><div class="card">' +
       '<div class="row"><label class="lbl" for="cc" style="white-space:normal">How many carts do you need?</label>' +
@@ -838,13 +842,18 @@ function trimCart(cart) {
       }
     }
     if (un === 0 && ov === 0 && reqT > 0) h += '<div class="notice ok">All ' + reqT + ' standard meals are allocated.</div>';
+    var spReq = toInt(f.spmlTotal), spLeft = spReq - spT;
+    if (spReq > 0 && spLeft > 0) h += '<div class="notice warn">' + spLeft + ' special meal' + (spLeft === 1 ? ' is' : 's are') + ' not in a cart yet. Add ' + (spLeft === 1 ? 'it' : 'them') + ' in the carts below.</div>';
+    if (spReq > 0 && spLeft < 0) h += '<div class="notice bad">' + (-spLeft) + ' more special meal' + (spLeft === -1 ? ' is' : 's are') + ' in carts than the SPML total (' + spReq + ').</div>';
 
     h += '<div class="card"><table class="sum"><tr><th>Choice</th><th>Requested</th><th>Allocated</th><th>Left</th></tr>';
     KEYS.forEach(function (k) {
       var d = t[k] - a[k];
       h += '<tr><td>' + k + ' · ' + esc(cname(f, k)) + '</td><td>' + t[k] + '</td><td>' + a[k] + '</td><td class="' + (d === 0 ? 'green' : 'red') + '">' + d + '</td></tr>';
     });
-    h += '<tr class="tot"><td>Total</td><td>' + reqT + '</td><td>' + alT + '</td><td class="' + (reqT === alT ? 'green' : 'red') + '">' + (reqT - alT) + '</td></tr></table>' +
+    var showSp = spReq > 0 || spT > 0, rT = reqT + (showSp ? spReq : 0), aT = alT + (showSp ? spT : 0);
+    if (showSp) h += '<tr><td>SPML</td><td>' + spReq + '</td><td>' + spT + '</td><td class="' + (spLeft === 0 ? 'green' : 'red') + '">' + spLeft + '</td></tr>';
+    h += '<tr class="tot"><td>Total</td><td>' + rT + '</td><td>' + aT + '</td><td class="' + (rT === aT ? 'green' : 'red') + '">' + (rT - aT) + '</td></tr></table>' +
       '<p class="hint">Special meals: ' + spT + ' · Cart space: ' + (f.carts.length * CAP) + ' (' + f.carts.length + ' × 40)</p></div>';
 
     h += '<div class="card">';
@@ -865,7 +874,7 @@ function trimCart(cart) {
     var f = flight(); if (!f) return;
     var ae = document.activeElement;
     var t = totals(f);
-    var el = document.getElementById('stdTotal'); if (el) el.textContent = t.A + t.B + t.C;
+    var el = document.getElementById('stdTotal'); if (el) el.textContent = t.A + t.B + t.C + toInt(f.spmlTotal);
     var h1 = app.querySelector('header.top h1'); if (h1) h1.textContent = f.flightNumber || 'New flight';
 
     var msg = document.getElementById('ccmsg');
@@ -921,6 +930,7 @@ function trimCart(cart) {
       case 'fn': f.flightNumber = inp.value.toUpperCase().trim(); break;
       case 'fd': f.flightDate = inp.value; break;
       case 'cn': f.choices[k].name = inp.value; break;
+      case 'spt': f.spmlTotal = readNum(inp, 999); break;
       case 'cq':
         f.choices[k].qty = readNum(inp, 9999);
         if (f.generated && f.autoMode) autoDistribute(f);
