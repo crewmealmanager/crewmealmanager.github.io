@@ -121,6 +121,14 @@
   .start .tagline{color:var(--muted);margin:0 0 24px;font-size:15px}
   .who{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 16px;font-size:14px;color:var(--muted)}
   .who b{color:var(--ink);font-size:16px;display:block;margin-top:2px;overflow-wrap:anywhere}
+  .authform{text-align:left;margin:0 0 4px}
+  .authform input{margin:0 0 10px}
+  .authform .btn{margin-top:2px}
+  .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:16px 0}
+  .or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+  .authlinks{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .authlinks .link{padding:10px 0}
+  .okmsg{font-size:13px;color:var(--ok);font-weight:600;margin:0 0 12px}
   .plan{font-size:14px;font-weight:700;color:var(--ok);margin:0 0 14px}
   .link{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;text-decoration:underline;padding:12px;cursor:pointer;margin-top:4px}
 </style>
@@ -241,6 +249,23 @@ function trimCart(cart) {
   /* acct.state: local (sign-in not set up) | checking | signedout | signedin | error */
   var acct = { state: CONFIGURED ? 'checking' : 'local', uid: '', email: '', access: null, checked: false, offline: false, note: '' };
   var cloud = { api: null, writing: {}, dirty: {}, timers: {}, failed: {} };
+  var auth = { mode: 'signin', email: '', busy: false, info: '', recovering: false };
+
+  /* ---------- one device at a time: each browser has its own id; the newest sign-in wins ---------- */
+  var LS_DEVICE = 'crewMealManager.device', LS_CLAIM = 'crewMealManager.claim';
+  var deviceId = (function () {
+    var id = null;
+    try { id = localStorage.getItem(LS_DEVICE); } catch (e) {}
+    if (!id || !/^[A-Za-z0-9-]{8,64}$/.test(id)) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('d' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+      try { localStorage.setItem(LS_DEVICE, id); } catch (e) {}
+    }
+    return id;
+  })();
+  function markClaim() { try { localStorage.setItem(LS_CLAIM, '1'); } catch (e) {} }
+  function wantsClaim() { try { return localStorage.getItem(LS_CLAIM) === '1'; } catch (e) { return false; } }
+  function clearClaim() { try { localStorage.removeItem(LS_CLAIM); } catch (e) {} }
+  var REPLACED_NOTE = 'You were signed out because your account was signed in on another device. Each subscription works on one device at a time.';
 
   /* ---------- access: free trial or active subscription ---------- */
   function nowMs() { return Date.now() + ((acct.access && acct.access.skew) || 0); }
@@ -265,9 +290,10 @@ function trimCart(cart) {
     if (s === 'signedout') {
       h = '<div class="who">Sign in to start your<b>1-month free trial</b></div>';
       if (acct.note) h += '<p class="err" style="margin:0 0 12px">' + esc(acct.note) + '</p>';
-      return h + '<button class="btn" data-act="signin">Continue with Google</button>';
+      return h + '<button class="btn" data-act="signin">Continue with Google</button><div class="or">or use email</div>' + emailForm();
     }
-    h = '<div class="who">Signed in as<b>' + esc(acct.email || 'your Google account') + '</b></div>';
+    if (auth.recovering) return newPasswordForm();
+    h = '<div class="who">Signed in as<b>' + esc(acct.email || 'your account') + '</b></div>';
     if (!acct.checked) return h + '<div class="plan">Checking your plan…</div>';
     if (acct.note) h += '<p class="err" style="margin:0 0 12px">' + esc(acct.note) + '</p>';
     if (accessOk()) {
@@ -291,6 +317,66 @@ function trimCart(cart) {
       }
     }
     return h + '<button class="link" data-act="signout">Sign out</button>';
+  }
+  function emailForm() {
+    var m = auth.mode, h = '<form class="authform" id="authform" novalidate>';
+    if (auth.info) h += '<p class="okmsg">' + esc(auth.info) + '</p>';
+    h += '<input type="email" name="email" autocomplete="email" autocapitalize="off" placeholder="Email" value="' + esc(auth.email) + '">';
+    if (m !== 'reset') h += '<input type="password" name="password" autocomplete="' + (m === 'signup' ? 'new-password' : 'current-password') + '" placeholder="' + (m === 'signup' ? 'Choose a password (8+ characters)' : 'Password') + '">';
+    h += '<button class="btn" type="submit"' + (auth.busy ? ' disabled' : '') + '>' +
+      (auth.busy ? 'Please wait…' : m === 'signup' ? 'Create account' : m === 'reset' ? 'Send reset link' : 'Sign in') + '</button></form>';
+    h += '<div class="authlinks">';
+    if (m === 'signin') h += '<button class="link" data-act="mode-signup">Create an account</button><button class="link" data-act="mode-reset">Forgot password?</button>';
+    else h += '<button class="link" data-act="mode-signin">Back to sign in</button>';
+    return h + '</div>';
+  }
+  function newPasswordForm() {
+    var h = '<div class="who">Set a new password for<b>' + esc(acct.email) + '</b></div>';
+    if (acct.note) h += '<p class="err" style="margin:0 0 12px">' + esc(acct.note) + '</p>';
+    return h + '<form class="authform" id="newpwform" novalidate><input type="password" name="password" autocomplete="new-password" placeholder="New password (8+ characters)">' +
+      '<button class="btn" type="submit"' + (auth.busy ? ' disabled' : '') + '>' + (auth.busy ? 'Please wait…' : 'Save new password') + '</button></form>';
+  }
+  function authError(e) {
+    var m = (e && e.message) || '';
+    if (/invalid login credentials/i.test(m)) return 'Wrong email or password.';
+    if (/already registered|already exists/i.test(m)) return 'An account with this email already exists. Sign in instead.';
+    if (/email not confirmed/i.test(m)) return 'Please confirm your email first, using the link we sent you.';
+    if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Please choose a longer password (at least 8 characters).';
+    if (/rate limit|too many/i.test(m)) return 'Too many attempts. Please wait a few minutes and try again.';
+    if (/not authorized|sending|smtp/i.test(m)) return 'We couldn\'t send the email right now. Please contact abdulghani7818@gmail.com.';
+    return m || 'Something went wrong. Please try again.';
+  }
+  function emailSubmit(form) {
+    if (!sb || auth.busy) return;
+    var email = (form.email.value || '').trim().toLowerCase(), pw = form.password ? form.password.value : '';
+    auth.email = email; acct.note = ''; auth.info = '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { acct.note = 'Please enter a valid email address.'; return renderStart(); }
+    if (auth.mode !== 'reset' && pw.length < (auth.mode === 'signup' ? 8 : 1)) { acct.note = auth.mode === 'signup' ? 'Please choose a password of at least 8 characters.' : 'Please enter your password.'; return renderStart(); }
+    auth.busy = true; renderStart();
+    if (auth.mode !== 'reset') markClaim();
+    var done = function (r) {
+      auth.busy = false;
+      if (r && r.error) { acct.note = authError(r.error); clearClaim(); }
+      else if (auth.mode === 'signup' && r && r.data && !r.data.session) auth.info = 'Account created. Check your email to confirm it, then sign in.';
+      else if (auth.mode === 'reset') { auth.info = 'If an account exists for this email, a reset link is on its way.'; auth.mode = 'signin'; }
+      if (acct.state === 'signedout') renderStart();
+    };
+    var p = auth.mode === 'signup' ? sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname } })
+      : auth.mode === 'reset' ? sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname })
+      : sb.auth.signInWithPassword({ email: email, password: pw });
+    p.then(done, function (e) { done({ error: e }); });
+  }
+  function newPasswordSubmit(form) {
+    if (!sb || auth.busy) return;
+    var pw = form.password.value || '';
+    if (pw.length < 8) { acct.note = 'Please choose a password of at least 8 characters.'; return renderStart(); }
+    auth.busy = true; acct.note = ''; renderStart();
+    sb.auth.updateUser({ password: pw }).then(function (r) {
+      auth.busy = false;
+      if (r && r.error) acct.note = authError(r.error);
+      else { auth.recovering = false; acct.note = ''; }
+      renderStart();
+    });
   }
   function renderStart() {
     curId = null; screen = 'start';
@@ -443,6 +529,7 @@ function trimCart(cart) {
         trialEndsAt: Date.parse(d.trial_ends_at) || 0, status: d.status || 'none',
         subEndsAt: d.subscription_ends_at ? Date.parse(d.subscription_ends_at) : 0, skew: serverNow - Date.now()
       };
+      acct.device = { set: !!d.device_set, mine: d.this_device !== false };
       acct.offline = false; acct.note = '';
       saveAcct();
     }).catch(function (e) {
@@ -450,9 +537,27 @@ function trimCart(cart) {
       if (e && (e.code === 'PGRST202' || e.code === '42883')) acct.note = 'Setup isn\'t finished: the database script hasn\'t been run in Supabase yet.';
     }).then(function () {
       acct.checked = true;
+      /* Another device signed in after this one (and this one isn't signing in right now): sign out here. */
+      if (acct.state === 'signedin' && acct.device && acct.device.set && !acct.device.mine && !wantsClaim()) return replacedHere();
       if (screen === 'start' || !canUse()) renderStart();
     });
   }
+  /* Make this device the account's only device after a fresh sign-in, or if no device has been set yet. */
+  function claimIfNeeded() {
+    if (!sb || acct.state !== 'signedin' || acct.offline || !acct.device) return Promise.resolve();
+    if (!wantsClaim() && acct.device.set) return Promise.resolve();
+    return sb.rpc('claim_device').then(function (r) {
+      if (!r.error) { clearClaim(); acct.device = { set: true, mine: true }; }
+    }, function () {});
+  }
+  function replacedHere() {
+    var finish = function () { signedOut(REPLACED_NOTE); };
+    if (sb) sb.auth.signOut({ scope: 'local' }).catch(function () {}).then(finish); else finish();
+  }
+  /* Re-check when the app comes back to the screen, and every few minutes while open. */
+  function recheck() { if (acct.state === 'signedin' && !acct.offline && sb && document.visibilityState !== 'hidden') refreshAccess(); }
+  document.addEventListener('visibilitychange', recheck);
+  setInterval(recheck, 180000);
 
   /* ---------- sign-in ---------- */
   function signedIn(user) {
@@ -461,14 +566,14 @@ function trimCart(cart) {
       /* Was running offline on this account and the connection came back: keep the screen, just reconnect. */
       acct.email = user.email || acct.email;
       cloud = { api: makeApi(user.id), writing: {}, dirty: {}, timers: {}, failed: {} };
-      refreshAccess().then(syncDown);
+      refreshAccess().then(claimIfNeeded).then(syncDown);
       return;
     }
     acct = { state: 'signedin', uid: user.id, email: user.email || '', access: cached && cached.uid === user.id ? cached.access : null, checked: false, offline: false, note: '' };
     cloud = { api: makeApi(user.id), writing: {}, dirty: {}, timers: {}, failed: {} };
     useStore(user.id); saveAcct();
     renderStart();
-    refreshAccess().then(syncDown).then(waitForPayment);
+    refreshAccess().then(claimIfNeeded).then(syncDown).then(waitForPayment);
   }
   /* Back from the payment page: Polar tells the server within seconds; check a few times. */
   function waitForPayment() {
@@ -487,6 +592,7 @@ function trimCart(cart) {
   function signedOut(note) {
     clearAcct();
     acct = { state: 'signedout', uid: '', email: '', access: null, checked: false, offline: false, note: note || '' };
+    auth.busy = false; auth.recovering = false; auth.mode = 'signin'; auth.info = '';
     cloud = { api: null, writing: {}, dirty: {}, timers: {}, failed: {} };
     store = { flights: {}, deleted: [] }; lsKey = LS_BASE; lastKey = LS_LAST;
     renderStart();
@@ -503,9 +609,13 @@ function trimCart(cart) {
   }
   function onSession(event, session) {
     var user = session && session.user;
+    if (event === 'PASSWORD_RECOVERY') auth.recovering = true;
     if (user) {
+      if (auth.recovering && acct.state === 'signedin' && acct.uid === user.id) { if (screen === 'start') renderStart(); return; }
       if (acct.state === 'signedin' && acct.uid === user.id && cloud.api) return; // token refresh or tab refocus
       signedIn(user);
+    } else if (event === 'SIGNED_OUT' && acct.state === 'signedout') {
+      return; // already shown the signed-out screen (and any message on it)
     } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
       signedOut(acct.state === 'checking' ? urlError() : '');
     }
@@ -530,7 +640,7 @@ function trimCart(cart) {
     if (!CONFIGURED) return;
     loadLib(function (ok) {
       if (!ok) return authUnavailable();
-      try { sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey); } catch (e) { return authUnavailable(); }
+      try { sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, { global: { headers: { 'x-device-id': deviceId } } }); } catch (e) { return authUnavailable(); }
       /* Supabase asks that nothing else is called from inside this callback, so hand off with a timer. */
       sb.auth.onAuthStateChange(function (event, session) { setTimeout(function () { onSession(event, session); }, 0); });
       setTimeout(authUnavailable, 10000);
@@ -538,16 +648,18 @@ function trimCart(cart) {
   }
   function signIn() {
     if (!sb) return;
+    markClaim();
     sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } })
       .then(function (r) { if (r && r.error) { acct.note = 'Sign-in didn\'t start: ' + r.error.message; renderStart(); } });
   }
   function signOut() {
-    if (sb) sb.auth.signOut().catch(function () {}).then(function () { if (acct.state !== 'signedout') signedOut(''); });
+    clearClaim();
+    if (sb) sb.auth.signOut({ scope: 'local' }).catch(function () {}).then(function () { if (acct.state !== 'signedout') signedOut(''); });
     else signedOut('');
   }
   function accountText() {
     if (acct.state !== 'signedin') return 'Flights are saved on this device.';
-    return 'Signed in as ' + esc(acct.email || 'your Google account') + (acct.offline ? ' · offline' : '') +
+    return 'Signed in as ' + esc(acct.email || 'your account') + (acct.offline ? ' · offline' : '') +
       '<br><button class="link" data-act="signout">Sign out</button>';
   }
 
@@ -777,10 +889,19 @@ function trimCart(cart) {
     }
   });
 
+  app.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (e.target.id === 'authform') emailSubmit(e.target);
+    else if (e.target.id === 'newpwform') newPasswordSubmit(e.target);
+  });
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b) return;
     var act = b.dataset.act, f = flight();
     if (act === 'signin') return signIn();
+    if (act === 'mode-signin' || act === 'mode-signup' || act === 'mode-reset') {
+      var em = document.querySelector('#authform input[name=email]'); if (em) auth.email = em.value.trim();
+      auth.mode = act.slice(5); acct.note = ''; auth.info = ''; renderStart(); return;
+    }
     if (act === 'signout') return signOut();
     if (act === 'retry') { location.reload(); return; }
     if (!canUse()) return renderStart();
