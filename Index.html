@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Crew Meal Manager</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#15202b; --muted:#6b7682; --line:#e3e6ea;
+    --accent:#1d3557; --accent-ink:#ffffff; --ok:#1f8a4c; --ok-bg:#e8f5ee; --bad:#c62f2f; --bad-bg:#fdecec;
+    --warn:#8a5a00; --warn-bg:#fff4dc; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink)}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.35;-webkit-text-size-adjust:100%;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 24px) env(safe-area-inset-left);
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:10px 12px}
+  header.top{display:flex;align-items:center;gap:12px;min-height:40px;margin-bottom:4px}
+  header.top h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.01em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .saved{font-size:13px;color:var(--muted);white-space:nowrap}
+  .back{background:none;border:0;color:var(--accent);font-size:15px;font-weight:600;padding:10px 4px;cursor:pointer}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin:0 0 10px}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 4px 6px;font-weight:700}
+  label.f{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:600}
+  input{
+    font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1px solid #cfd5dc;border-radius:10px;
+    height:40px;padding:0 10px;width:100%;-webkit-appearance:none;appearance:none;
+  }
+  select.cartsel{
+    font:inherit;font-size:16px;font-weight:700;color:var(--ink);background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7682' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 10px center;
+    border:1px solid #cfd5dc;border-radius:10px;height:40px;padding:0 28px 0 10px;width:100%;-webkit-appearance:none;appearance:none;flex:1;min-width:0
+  }
+  select.cartsel:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,53,87,.15)}
+  select.cartsel.empty{color:var(--muted);font-weight:400}
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,53,87,.15)}
+  input.num{text-align:center;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;width:68px;flex:none}
+  input.upper{text-transform:uppercase}
+  input[type=date]{min-height:40px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  @media (max-width:340px){.grid2{grid-template-columns:1fr}}
+  .row{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+  .row:last-child{margin-bottom:0}
+  .tag{flex:none;width:24px;height:24px;border-radius:6px;background:#eef1f5;color:var(--accent);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .lbl{flex:1;min-width:0;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .totalline{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-weight:600}
+  .big{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+  .btn{
+    display:block;width:100%;border:0;border-radius:12px;min-height:44px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;
+    background:var(--accent);color:var(--accent-ink);letter-spacing:.02em;padding:0 16px;
+  }
+  .btn:active{opacity:.85}
+  .btn.ghost{background:#fff;color:var(--accent);border:1.5px solid var(--accent)}
+  .btn.small{min-height:38px;font-size:14px}
+  .btn.danger{background:var(--bad)}
+  .hint{font-size:12px;color:var(--muted);margin:6px 2px 0}
+  .err{font-size:13px;color:var(--bad);margin:10px 2px 0;font-weight:600}
+  .notice{border-radius:12px;padding:8px 12px;font-size:13px;margin:0 0 8px;font-weight:600}
+  .notice.warn{background:var(--warn-bg);color:var(--warn)}
+  .notice.bad{background:var(--bad-bg);color:var(--bad)}
+  .notice.ok{background:var(--ok-bg);color:var(--ok)}
+  .notice .btn{margin-top:10px}
+  table.sum{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.sum th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right;padding:6px 4px;font-weight:700}
+  table.sum th:first-child,table.sum td:first-child{text-align:left}
+  table.sum td{padding:5px 4px;border-top:1px solid var(--line);text-align:right;font-size:14px;font-weight:600}
+  table.sum td:first-child{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  table.sum tr.tot td{font-weight:800}
+  .red{color:var(--bad)} .green{color:var(--ok)}
+  .cs{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+  .cs:first-child{border-top:0;padding-top:0}
+  .cs .nm{font-weight:700;font-size:14px}
+  .cs .det{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .cs .grow{flex:1;min-width:0}
+  .pill{flex:none;border-radius:999px;padding:3px 9px;font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)}
+  .pill.bad{background:var(--bad-bg);color:var(--bad)}
+  .cart{border-left:5px solid var(--ok)}
+  .cart.over{border-left-color:var(--bad)}
+  .cart-head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .cart-head input{font-weight:700}
+  .sub{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin:10px 0 6px}
+  .sp-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .sp-row input.spn{flex:1;min-width:0}
+  .x{flex:none;width:38px;height:40px;border-radius:10px;border:1px solid #cfd5dc;background:#fff;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+  .cart-foot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-weight:600}
+  .flight{display:flex;align-items:center;gap:10px}
+  .flight .open{flex:1;min-width:0;text-align:left;background:none;border:0;font:inherit;color:inherit;padding:4px 0;cursor:pointer}
+  .flight .fno{font-size:16px;font-weight:800}
+  .flight .meta{font-size:12px;color:var(--muted)}
+  .empty{text-align:center;color:var(--muted);padding:28px 8px}
+  .mode{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 8px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
+  .dot.off{background:#d39b00}
+  .foot{font-size:13px;color:var(--muted);text-align:center;margin-top:18px}
+  .dlg-back{position:fixed;inset:0;background:rgba(10,20,30,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px;z-index:10}
+  .dlg-back[hidden]{display:none}
+  .dlg{background:#fff;border-radius:16px;padding:20px;max-width:440px;width:100%;margin-bottom:env(safe-area-inset-bottom)}
+  .dlg p{margin:0 0 16px;font-size:17px}
+  .dlg .grid2{grid-template-columns:1fr 1fr}
+  @media (min-width:600px){.dlg-back{align-items:center}}
+  /* two carts side by side */
+  #carts{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+  @media (min-width:640px){#carts{grid-template-columns:1fr 1fr 1fr}}
+  #carts .card{margin:0;padding:8px;border-left-width:4px;border-radius:12px}
+  #carts .cart-head{flex-wrap:wrap;gap:4px;margin-bottom:4px}
+  #carts .cart-head input,#carts .cart-head select.cartsel{flex:1 1 100%;padding-left:8px;height:36px}
+  #carts .cart-head input{padding:0 8px}
+  #carts input{height:36px;font-size:16px}
+  #carts input.num{width:44px;padding:0 2px;font-size:16px}
+  #carts .tag{width:20px;height:20px;font-size:11px;border-radius:5px}
+  #carts .lbl{font-size:13px}
+  #carts .row{gap:5px;margin-bottom:5px}
+  #carts .sub{margin:6px 0 4px;font-size:10px}
+  #carts .sp-row{gap:4px;margin-bottom:5px}
+  #carts .sp-row input.spn{padding:0 6px}
+  #carts .x{width:28px;height:36px;font-size:17px;border-radius:8px}
+  #carts .btn.small{min-height:34px;font-size:13px;padding:0 4px}
+  #carts .cart-foot{margin-top:6px;padding-top:6px;font-size:12px;align-items:center}
+  #carts .cart-foot .big{font-size:17px}
+  #carts .pill{font-size:12px;padding:2px 8px}
+  .start{min-height:calc(100vh - 60px);display:flex;flex-direction:column;justify-content:center;text-align:center;padding:24px 8px}
+  .logo{width:64px;height:64px;border-radius:16px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-weight:800;font-size:18px;letter-spacing:.02em}
+  .start h1{font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+  .start .tagline{color:var(--muted);margin:0 0 24px;font-size:15px}
+  .who{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 16px;font-size:14px;color:var(--muted)}
+  .who b{color:var(--ink);font-size:16px;display:block;margin-top:2px;overflow-wrap:anywhere}
+  .authform{text-align:left;margin:0 0 4px}
+  .authform input{margin:0 0 10px}
+  .authform .btn{margin-top:2px}
+  .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:16px 0}
+  .or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+  .authlinks{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .authlinks .link{padding:10px 0}
+  .okmsg{font-size:13px;color:var(--ok);font-weight:600;margin:0 0 12px}
+  .plan{font-size:14px;font-weight:700;color:var(--ok);margin:0 0 14px}
+  .link{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;text-decoration:underline;padding:12px;cursor:pointer;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<datalist id="spml">
+  <option value="AVML"><option value="VGML"><option value="VLML"><option value="VJML"><option value="VOML"><option value="RVML">
+  <option value="GFML"><option value="MOML"><option value="KSML"><option value="HNML"><option value="DBML"><option value="LFML">
+  <option value="LSML"><option value="NLML"><option value="BLML"><option value="SFML"><option value="FPML"><option value="CHML"><option value="BBML">
+</datalist>
+
+<div class="dlg-back" id="dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true">
+    <p id="dlg-msg"></p>
+    <div class="grid2">
+      <button class="btn ghost small" id="dlg-no">Cancel</button>
+      <button class="btn small" id="dlg-yes">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ALLOCATION ENGINE (pure functions, no DOM) ===================== -->
+<script id="engine">
+var CAP = 40;
+var KEYS = ['A', 'B', 'C'];
+
+function toInt(v) { v = Math.floor(Number(v)); return isFinite(v) && v > 0 ? v : 0; }
+function specialsTotal(cart) { return cart.specials.reduce(function (s, x) { return s + toInt(x.qty); }, 0); }
+function stdTotal(cart) { return KEYS.reduce(function (s, k) { return s + toInt(cart.std[k]); }, 0); }
+function cartTotal(cart) { return specialsTotal(cart) + stdTotal(cart); }
+
+/* Distribute standard meals across carts.
+   - Special meals stay where the user put them and reduce that cart's free space.
+   - One casserole at a time: take the choice with the most still unplaced, put it in the
+     cart where that choice is currently thinnest relative to the cart's free space.
+   - Never exceeds 40 per cart, never invents or loses a meal; leftovers are returned as unallocated. */
+function distribute(totals, carts) {
+  var n = carts.length;
+  var cap = carts.map(function (c) { return Math.max(0, CAP - specialsTotal(c)); });
+  var free = cap.slice();
+  var alloc = carts.map(function () { return { A: 0, B: 0, C: 0 }; });
+  var left = { A: toInt(totals.A), B: toInt(totals.B), C: toInt(totals.C) };
+  while (true) {
+    var k = null;
+    KEYS.forEach(function (key) { if (left[key] > 0 && (k === null || left[key] > left[k])) k = key; });
+    if (k === null) break;
+    var best = -1, bestScore = Infinity;
+    for (var i = 0; i < n; i++) {
+      if (free[i] <= 0) continue;
+      var score = (alloc[i][k] + 1) / cap[i];
+      if (score < bestScore - 1e-12 || (Math.abs(score - bestScore) <= 1e-12 && free[i] > free[best])) {
+        best = i; bestScore = score;
+      }
+    }
+    if (best === -1) break; // no space left anywhere
+    alloc[best][k]++; free[best]--; left[k]--;
+  }
+  return { alloc: alloc, unallocated: left };
+}
+
+function allocatedTotals(carts) {
+  var t = { A: 0, B: 0, C: 0 };
+  carts.forEach(function (c) { KEYS.forEach(function (k) { t[k] += toInt(c.std[k]); }); });
+  return t;
+}
+
+/* Largest value a user may type into one cart's standard field:
+   limited by the cart's 40 capacity and by how many of that choice are still unplaced. */
+function manualMax(totals, carts, ci, k) {
+  var cart = carts[ci];
+  var current = toInt(cart.std[k]);
+  var room = CAP - (cartTotal(cart) - current);
+  var unplaced = toInt(totals[k]) - allocatedTotals(carts)[k];
+  return Math.max(0, Math.min(room, current + Math.max(0, unplaced)));
+}
+
+/* Largest quantity allowed for one special meal line (specials alone may not exceed 40). */
+function specialMax(cart, si) {
+  return Math.max(0, CAP - (specialsTotal(cart) - toInt(cart.specials[si].qty)));
+}
+
+/* Remove standard meals from a cart until it fits in 40 (largest choice first).
+   Removed meals become unallocated. Used when automatic distribution is paused. */
+function trimCart(cart) {
+  var over = cartTotal(cart) - CAP;
+  while (over > 0) {
+    var k = null;
+    KEYS.forEach(function (key) { if (toInt(cart.std[key]) > 0 && (k === null || cart.std[key] > cart.std[k])) k = key; });
+    if (k === null) break;
+    cart.std[k] = toInt(cart.std[k]) - 1; over--;
+  }
+}
+</script>
+
+<!-- ===================== APP ===================== -->
+<script>
+(function () {
+  /* ---------- settings: filled in once the Supabase project exists ---------- */
+  var CONFIG = {
+    supabaseUrl: 'https://mvuokgoidtnhxodrdmno.supabase.co',
+    supabaseKey: 'sb_publishable_pF_f-s3nEfu-mK2StxZQ2g_ccUIJsFS',   // publishable key: meant to be public
+    checkoutUrl: 'https://buy.polar.sh/polar_cl_lNBz1oj0uLPRyHiT7N2TQDuX7PIId3QOFvoR21KWFNl',
+    portalUrl: 'https://polar.sh/crewmeal/portal'
+  };
+  var CONFIGURED = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
+
+  var LS_BASE = 'crewMealManager.v1';
+  var LS_LAST = 'crewMealManager.lastOpen';
+  var LS_ACCT = 'crewMealManager.account';
+  var lsKey = LS_BASE, lastKey = LS_LAST;
+  var store = { flights: {}, deleted: [] };
+  var curId = null;
+  var screen = 'start';
+  var app = document.getElementById('app');
+  var sb = null;
+  /* acct.state: local (sign-in not set up) | checking | signedout | signedin | error */
+  var acct = { state: CONFIGURED ? 'checking' : 'local', uid: '', email: '', access: null, checked: false, offline: false, note: '' };
+  var cloud = { api: null, writing: {}, dirty: {}, timers: {}, failed: {} };
+  var auth = { mode: 'signin', email: '', busy: false, info: '', recovering: false };
+
+  /* ---------- one device at a time: each browser has its own id; the newest sign-in wins ---------- */
+  var LS_DEVICE = 'crewMealManager.device', LS_CLAIM = 'crewMealManager.claim';
+  var deviceId = (function () {
+    var id = null;
+    try { id = localStorage.getItem(LS_DEVICE); } catch (e) {}
+    if (!id || !/^[A-Za-z0-9-]{8,64}$/.test(id)) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('d' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+      try { localStorage.setItem(LS_DEVICE, id); } catch (e) {}
+    }
+    return id;
+  })();
+  function markClaim() { try { localStorage.setItem(LS_CLAIM, '1'); } catch (e) {} }
+  function wantsClaim() { try { return localStorage.getItem(LS_CLAIM) === '1'; } catch (e) { return false; } }
+  function clearClaim() { try { localStorage.removeItem(LS_CLAIM); } catch (e) {} }
+  var REPLACED_NOTE = 'You were signed out because your account was signed in on another device. Each subscription works on one device at a time.';
+
+  /* ---------- access: free trial or active subscription ---------- */
+  function nowMs() { return Date.now() + ((acct.access && acct.access.skew) || 0); }
+  function accessOk() {
+    var a = acct.access; if (!a) return true; // not known yet: the server still enforces it
+    if (a.status === 'active' && (!a.subEndsAt || a.subEndsAt > nowMs())) return true;
+    return a.trialEndsAt > nowMs();
+  }
+  function trialDaysLeft() { var a = acct.access; return a ? Math.max(0, Math.ceil((a.trialEndsAt - nowMs()) / 86400000)) : 0; }
+  function canUse() { return acct.state === 'local' || (acct.state === 'signedin' && accessOk()); }
+
+  function subscribeHref() {
+    return CONFIG.checkoutUrl + (CONFIG.checkoutUrl.indexOf('?') < 0 ? '?' : '&') + 'customer_email=' + encodeURIComponent(acct.email || '');
+  }
+  function isSubscribed() { var a = acct.access; return !!(a && a.status === 'active' && (!a.subEndsAt || a.subEndsAt > nowMs())); }
+  var justPaid = /[?&]paid=1/.test(location.search);
+  function startBody() {
+    var s = acct.state, h = '';
+    if (s === 'local') return '<div class="who">Sign-in isn\'t set up yet. Flights are saved on this device only.</div><button class="btn" data-act="start">Start</button>';
+    if (s === 'checking') return '<div class="who">Checking sign-in…</div>';
+    if (s === 'error') return '<div class="who">Can\'t reach the sign-in service. Check your connection and try again.</div><button class="btn" data-act="retry">Try again</button>';
+    if (s === 'signedout') {
+      h = '<div class="who">Sign in to start your<b>1-month free trial</b></div>';
+      if (acct.note) h += '<p class="err" style="margin:0 0 12px">' + esc(acct.note) + '</p>';
+      return h + '<button class="btn" data-act="signin">Continue with Google</button><div class="or">or use email</div>' + emailForm();
+    }
+    if (auth.recovering) return newPasswordForm();
+    h = '<div class="who">Signed in as<b>' + esc(acct.email || 'your account') + '</b></div>';
+    if (!acct.checked) return h + '<div class="plan">Checking your plan…</div>';
+    if (acct.note) h += '<p class="err" style="margin:0 0 12px">' + esc(acct.note) + '</p>';
+    if (accessOk()) {
+      var a = acct.access, d = trialDaysLeft();
+      var plan = !a ? '' : (a.status === 'active' && (!a.subEndsAt || a.subEndsAt > nowMs())) ? 'Subscription active'
+        : 'Free trial · ' + d + ' day' + (d === 1 ? '' : 's') + ' left';
+      if (acct.offline) plan += (plan ? ' · ' : '') + 'offline';
+      if (plan) h += '<div class="plan">' + plan + '</div>';
+      h += '<button class="btn" data-act="start">Start</button>';
+      if (isSubscribed()) h += '<a class="link" style="display:inline-block" href="' + esc(CONFIG.portalUrl) + '">Manage subscription</a>';
+      else if (CONFIG.checkoutUrl) h += '<a class="link" style="display:inline-block" href="' + esc(subscribeHref()) + '">Subscribe now · 10 QAR / month</a>';
+    } else {
+      if (justPaid) {
+        h += '<div class="notice ok" style="text-align:left">Thank you! Your payment is being confirmed. This page unlocks in a few seconds.</div>';
+      } else {
+        var lapsed = acct.access && acct.access.status === 'active';
+        h += '<div class="notice warn" style="text-align:left">' + (lapsed ? 'Your subscription has ended. ' : 'Your free month has ended. ') +
+          (CONFIG.checkoutUrl ? 'Subscribe for 10 QAR a month to keep using Crew Meal Manager. Your saved flights are kept.' : 'Subscriptions are opening soon. Your saved flights are kept.') + '</div>';
+        if (CONFIG.checkoutUrl) h += '<a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="' + esc(subscribeHref()) + '">Subscribe · 10 QAR / month</a>' +
+          '<p class="hint" style="text-align:center">Use the same email at checkout: ' + esc(acct.email || '') + '</p>';
+      }
+    }
+    return h + '<button class="link" data-act="signout">Sign out</button>';
+  }
+  function emailForm() {
+    var m = auth.mode, h = '<form class="authform" id="authform" novalidate>';
+    if (auth.info) h += '<p class="okmsg">' + esc(auth.info) + '</p>';
+    h += '<input type="email" name="email" autocomplete="email" autocapitalize="off" placeholder="Email" value="' + esc(auth.email) + '">';
+    if (m !== 'reset') h += '<input type="password" name="password" autocomplete="' + (m === 'signup' ? 'new-password' : 'current-password') + '" placeholder="' + (m === 'signup' ? 'Choose a password (8+ characters)' : 'Password') + '">';
+    h += '<button class="btn" type="submit"' + (auth.busy ? ' disabled' : '') + '>' +
+      (auth.busy ? 'Please wait…' : m === 'signup' ? 'Create account' : m === 'reset' ? 'Send reset link' : 'Sign in') + '</button></form>';
+    h += '<div class="authlinks">';
+    if (m === 'signin') h += '<button class="link" data-act="mode-signup">Create an account</button><button class="link" data-act="mode-reset">Forgot password?</button>';
+    else h += '<button class="link" data-act="mode-signin">Back to sign in</button>';
+    return h + '</div>';
+  }
+  function newPasswordForm() {
+    var h = '<div class="who">Set a new password for<b>' + esc(acct.email) + '</b></div>';
+    if (acct.note) h += '<p class="err" style="margin:0 0 12px">' + esc(acct.note) + '</p>';
+    return h + '<form class="authform" id="newpwform" novalidate><input type="password" name="password" autocomplete="new-password" placeholder="New password (8+ characters)">' +
+      '<button class="btn" type="submit"' + (auth.busy ? ' disabled' : '') + '>' + (auth.busy ? 'Please wait…' : 'Save new password') + '</button></form>';
+  }
+  function authError(e) {
+    var m = (e && e.message) || '';
+    if (/invalid login credentials/i.test(m)) return 'Wrong email or password.';
+    if (/already registered|already exists/i.test(m)) return 'An account with this email already exists. Sign in instead.';
+    if (/email not confirmed/i.test(m)) return 'Please confirm your email first, using the link we sent you.';
+    if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Please choose a longer password (at least 8 characters).';
+    if (/rate limit|too many/i.test(m)) return 'Too many attempts. Please wait a few minutes and try again.';
+    if (/not authorized|sending|smtp/i.test(m)) return 'We couldn\'t send the email right now. Please contact abdulghani7818@gmail.com.';
+    return m || 'Something went wrong. Please try again.';
+  }
+  function emailSubmit(form) {
+    if (!sb || auth.busy) return;
+    var email = (form.email.value || '').trim().toLowerCase(), pw = form.password ? form.password.value : '';
+    auth.email = email; acct.note = ''; auth.info = '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { acct.note = 'Please enter a valid email address.'; return renderStart(); }
+    if (auth.mode !== 'reset' && pw.length < (auth.mode === 'signup' ? 8 : 1)) { acct.note = auth.mode === 'signup' ? 'Please choose a password of at least 8 characters.' : 'Please enter your password.'; return renderStart(); }
+    auth.busy = true; renderStart();
+    if (auth.mode !== 'reset') markClaim();
+    var done = function (r) {
+      auth.busy = false;
+      if (r && r.error) { acct.note = authError(r.error); clearClaim(); }
+      else if (auth.mode === 'signup' && r && r.data && !r.data.session) auth.info = 'Account created. Check your email to confirm it, then sign in.';
+      else if (auth.mode === 'reset') { auth.info = 'If an account exists for this email, a reset link is on its way.'; auth.mode = 'signin'; }
+      if (acct.state === 'signedout') renderStart();
+    };
+    var p = auth.mode === 'signup' ? sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname } })
+      : auth.mode === 'reset' ? sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname })
+      : sb.auth.signInWithPassword({ email: email, password: pw });
+    p.then(done, function (e) { done({ error: e }); });
+  }
+  function newPasswordSubmit(form) {
+    if (!sb || auth.busy) return;
+    var pw = form.password.value || '';
+    if (pw.length < 8) { acct.note = 'Please choose a password of at least 8 characters.'; return renderStart(); }
+    auth.busy = true; acct.note = ''; renderStart();
+    sb.auth.updateUser({ password: pw }).then(function (r) {
+      auth.busy = false;
+      if (r && r.error) acct.note = authError(r.error);
+      else { auth.recovering = false; acct.note = ''; }
+      renderStart();
+    });
+  }
+  function renderStart() {
+    curId = null; screen = 'start';
+    app.innerHTML = '<div class="start"><div class="logo">CMM</div><h1>Crew Meal Manager</h1>' +
+      '<p class="tagline">Economy meals and cart planning</p>' + startBody() +
+      '<p class="foot"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p></div>';
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- helpers ---------- */
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function uid(p) { return (p || 'x') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fmtDate(s) {
+    if (!s) return 'No date';
+    var p = s.split('-'); if (p.length !== 3) return s;
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function flight() { return curId ? store.flights[curId] : null; }
+  function totals(f) { return { A: toInt(f.choices.A.qty), B: toInt(f.choices.B.qty), C: toInt(f.choices.C.qty) }; }
+  function cname(f, k) { return (f.choices[k].name || '').trim() || ('Choice ' + k); }
+  function cartLabel(c, i) { return (c.name || '').trim() || ('Cart ' + (i + 1)); }
+  function numInput(attrs, val) {
+    return '<input class="num" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" ' + attrs + ' value="' + esc(val) + '">';
+  }
+
+  function newFlight() {
+    var now = Date.now();
+    return {
+      id: uid('f'), schemaVersion: 1, flightNumber: '', flightDate: today(),
+      choices: { A: { name: '', qty: 0 }, B: { name: '', qty: 0 }, C: { name: '', qty: 0 } },
+      cartCount: 0, carts: [], generated: false, autoMode: true, createdAt: now, updatedAt: now
+    };
+  }
+  function newCart() { return { id: uid('c'), name: '', specials: [], std: { A: 0, B: 0, C: 0 } }; }
+
+  /* ---------- storage: this device first, then the signed-in account ---------- */
+  function readStore(key) {
+    try { var raw = localStorage.getItem(key); if (raw) { var d = JSON.parse(raw); return { flights: d.flights || {}, deleted: d.deleted || [] }; } } catch (e) {}
+    return null;
+  }
+  function loadLocal() { store = readStore(lsKey) || { flights: {}, deleted: [] }; }
+  function saveLocal() {
+    try { localStorage.setItem(lsKey, JSON.stringify({ schemaVersion: 1, flights: store.flights, deleted: store.deleted })); } catch (e) {}
+  }
+  function setLast(id) { try { if (id) localStorage.setItem(lastKey, id); else localStorage.removeItem(lastKey); } catch (e) {} }
+  function getLast() { try { return localStorage.getItem(lastKey); } catch (e) { return null; } }
+
+  /* Each account keeps its own flights on the device. Flights made before sign-in existed move to the first account that signs in. */
+  function useStore(uid) {
+    lsKey = LS_BASE + ':' + uid; lastKey = LS_LAST + ':' + uid;
+    var own = readStore(lsKey);
+    if (!own) {
+      var legacy = readStore(LS_BASE);
+      if (legacy && Object.keys(legacy.flights).length) {
+        store = legacy; saveLocal();
+        try { localStorage.removeItem(LS_BASE); } catch (e) {}
+        return;
+      }
+    }
+    store = own || { flights: {}, deleted: [] };
+  }
+  function readAcct() { try { return JSON.parse(localStorage.getItem(LS_ACCT) || 'null'); } catch (e) { return null; } }
+  function saveAcct() { try { localStorage.setItem(LS_ACCT, JSON.stringify({ uid: acct.uid, email: acct.email, access: acct.access })); } catch (e) {} }
+  function clearAcct() { try { localStorage.removeItem(LS_ACCT); } catch (e) {} }
+
+  function touch(f) {
+    f.updatedAt = Date.now();
+    saveLocal();
+    scheduleCloud(f.id);
+    var s = document.getElementById('saved'); if (s) s.textContent = 'Saved';
+  }
+
+  /* ---------- account sync (Supabase) ---------- */
+  function makeApi(uid) {
+    function ok(r) { if (r.error) throw r.error; return r.data; }
+    return {
+      list: function () { return sb.from('flights').select('data').then(ok).then(function (rows) { return (rows || []).map(function (r) { return r.data; }); }); },
+      set: function (id, body) {
+        return sb.from('flights').upsert({ user_id: uid, id: id, data: body, updated_at: body.updatedAt || 0 }, { onConflict: 'user_id,id' }).then(ok);
+      }
+    };
+  }
+  function scheduleCloud(id) {
+    if (!cloud.api) return;
+    clearTimeout(cloud.timers[id]);
+    cloud.timers[id] = setTimeout(function () { cloudWrite(id); }, 900);
+  }
+  /* One write at a time per flight. A deleted flight is stored as a small "deleted" marker so other devices remove it too. */
+  function cloudWrite(id) {
+    var c = cloud; if (!c.api) return;
+    if (c.writing[id]) { c.dirty[id] = true; return; }
+    var f = store.flights[id], isDel = !f;
+    if (isDel && store.deleted.indexOf(id) < 0) return;
+    var body = f ? JSON.parse(JSON.stringify(f)) : { id: id, deleted: true, updatedAt: Date.now() };
+    c.writing[id] = true; c.dirty[id] = false;
+    c.api.set(id, body).then(function () {
+      delete c.failed[id];
+      if (c === cloud && isDel && !store.flights[id]) { store.deleted = store.deleted.filter(function (x) { return x !== id; }); saveLocal(); }
+    }).catch(function (e) {
+      c.failed[id] = true;
+      if (c === cloud && e && e.code === '42501') refreshAccess(); // server says: no active trial or subscription
+    }).then(function () {
+      c.writing[id] = false;
+      if (c === cloud && c.dirty[id]) cloudWrite(id);
+    });
+  }
+  function retryFailed() { if (cloud.api) Object.keys(cloud.failed).forEach(cloudWrite); }
+  window.addEventListener('online', retryFailed);
+
+  function syncDown() {
+    var c = cloud; if (!c.api) return;
+    c.api.list().then(function (rows) {
+      if (c !== cloud) return;
+      var remote = {}, changed = false, changedOpen = false;
+      rows.forEach(function (rf) {
+        if (!rf || !rf.id) return;
+        remote[rf.id] = rf;
+        var lf = store.flights[rf.id], pendingDel = store.deleted.indexOf(rf.id) >= 0;
+        if (rf.deleted) {
+          if (lf && (lf.updatedAt || 0) <= (rf.updatedAt || 0)) { delete store.flights[rf.id]; changed = true; if (rf.id === curId) changedOpen = true; }
+          if (pendingDel) store.deleted = store.deleted.filter(function (x) { return x !== rf.id; });
+          return;
+        }
+        if (pendingDel) return; // deleted here; the marker is pushed below
+        if (!lf || (rf.updatedAt || 0) > (lf.updatedAt || 0)) {
+          store.flights[rf.id] = rf; changed = true;
+          if (rf.id === curId) changedOpen = true;
+        }
+      });
+      saveLocal();
+      Object.keys(store.flights).forEach(function (id) {
+        var r = remote[id], lf = store.flights[id];
+        if (!r || (r.updatedAt || 0) < (lf.updatedAt || 0)) cloudWrite(id);
+      });
+      store.deleted.slice().forEach(cloudWrite);
+      var ae = document.activeElement, typing = ae && ae.tagName === 'INPUT';
+      if (screen === 'home' && changed) renderHome();
+      else if (screen === 'flight' && changedOpen && !typing) renderFlight();
+    }).catch(function () {});
+  }
+
+  function refreshAccess() {
+    if (!sb) return Promise.resolve();
+    return sb.rpc('my_access').then(function (r) {
+      if (r.error || !r.data) throw (r.error || new Error('no data'));
+      var d = r.data, serverNow = Date.parse(d.now) || Date.now();
+      acct.access = {
+        trialEndsAt: Date.parse(d.trial_ends_at) || 0, status: d.status || 'none',
+        subEndsAt: d.subscription_ends_at ? Date.parse(d.subscription_ends_at) : 0, skew: serverNow - Date.now()
+      };
+      acct.device = { set: !!d.device_set, mine: d.this_device !== false };
+      acct.offline = false; acct.note = '';
+      saveAcct();
+    }).catch(function (e) {
+      acct.offline = true;
+      if (e && (e.code === 'PGRST202' || e.code === '42883')) acct.note = 'Setup isn\'t finished: the database script hasn\'t been run in Supabase yet.';
+    }).then(function () {
+      acct.checked = true;
+      /* Another device signed in after this one (and this one isn't signing in right now): sign out here. */
+      if (acct.state === 'signedin' && acct.device && acct.device.set && !acct.device.mine && !wantsClaim()) return replacedHere();
+      if (screen === 'start' || !canUse()) renderStart();
+    });
+  }
+  /* Make this device the account's only device after a fresh sign-in, or if no device has been set yet. */
+  function claimIfNeeded() {
+    if (!sb || acct.state !== 'signedin' || acct.offline || !acct.device) return Promise.resolve();
+    if (!wantsClaim() && acct.device.set) return Promise.resolve();
+    return sb.rpc('claim_device').then(function (r) {
+      if (!r.error) { clearClaim(); acct.device = { set: true, mine: true }; }
+    }, function () {});
+  }
+  function replacedHere() {
+    var finish = function () { signedOut(REPLACED_NOTE); };
+    if (sb) sb.auth.signOut({ scope: 'local' }).catch(function () {}).then(finish); else finish();
+  }
+  /* Re-check when the app comes back to the screen, and every few minutes while open. */
+  function recheck() { if (acct.state === 'signedin' && !acct.offline && sb && document.visibilityState !== 'hidden') refreshAccess(); }
+  document.addEventListener('visibilitychange', recheck);
+  setInterval(recheck, 180000);
+
+  /* ---------- sign-in ---------- */
+  function signedIn(user) {
+    var cached = readAcct();
+    if (acct.state === 'signedin' && acct.uid === user.id) {
+      /* Was running offline on this account and the connection came back: keep the screen, just reconnect. */
+      acct.email = user.email || acct.email;
+      cloud = { api: makeApi(user.id), writing: {}, dirty: {}, timers: {}, failed: {} };
+      refreshAccess().then(claimIfNeeded).then(syncDown);
+      return;
+    }
+    acct = { state: 'signedin', uid: user.id, email: user.email || '', access: cached && cached.uid === user.id ? cached.access : null, checked: false, offline: false, note: '' };
+    cloud = { api: makeApi(user.id), writing: {}, dirty: {}, timers: {}, failed: {} };
+    useStore(user.id); saveAcct();
+    renderStart();
+    refreshAccess().then(claimIfNeeded).then(syncDown).then(waitForPayment);
+  }
+  /* Back from the payment page: Polar tells the server within seconds; check a few times. */
+  function waitForPayment() {
+    if (!justPaid) return;
+    var tries = 0;
+    (function again() {
+      if (isSubscribed() || tries++ >= 12) {
+        justPaid = false;
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+        if (screen === 'start') renderStart();
+        return;
+      }
+      setTimeout(function () { refreshAccess().then(again); }, 5000);
+    })();
+  }
+  function signedOut(note) {
+    clearAcct();
+    acct = { state: 'signedout', uid: '', email: '', access: null, checked: false, offline: false, note: note || '' };
+    auth.busy = false; auth.recovering = false; auth.mode = 'signin'; auth.info = '';
+    cloud = { api: null, writing: {}, dirty: {}, timers: {}, failed: {} };
+    store = { flights: {}, deleted: [] }; lsKey = LS_BASE; lastKey = LS_LAST;
+    renderStart();
+  }
+  /* The sign-in service can't be reached: carry on with the account last used on this device, if there is one. */
+  function authUnavailable() {
+    if (acct.state !== 'checking') return;
+    var cached = readAcct();
+    if (cached && cached.uid) {
+      acct = { state: 'signedin', uid: cached.uid, email: cached.email || '', access: cached.access || null, checked: true, offline: true, note: '' };
+      useStore(cached.uid);
+    } else acct.state = 'error';
+    if (screen === 'start') renderStart();
+  }
+  function onSession(event, session) {
+    var user = session && session.user;
+    if (event === 'PASSWORD_RECOVERY') auth.recovering = true;
+    if (user) {
+      if (auth.recovering && acct.state === 'signedin' && acct.uid === user.id) { if (screen === 'start') renderStart(); return; }
+      if (acct.state === 'signedin' && acct.uid === user.id && cloud.api) return; // token refresh or tab refocus
+      signedIn(user);
+    } else if (event === 'SIGNED_OUT' && acct.state === 'signedout') {
+      return; // already shown the signed-out screen (and any message on it)
+    } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+      signedOut(acct.state === 'checking' ? urlError() : '');
+    }
+  }
+  function urlError() {
+    var m = /[?#&]error_description=([^&]+)/.exec(location.search + location.hash);
+    if (!m) return '';
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    try { return 'Sign-in didn\'t finish: ' + decodeURIComponent(m[1].replace(/\+/g, ' ')); } catch (e) { return 'Sign-in didn\'t finish. Please try again.'; }
+  }
+  function loadLib(cb) {
+    if (window.supabase && window.supabase.createClient) return cb(true);
+    var done = false, s = document.createElement('script');
+    function fin(ok) { if (!done) { done = true; cb(ok); } }
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.onload = function () { fin(!!(window.supabase && window.supabase.createClient)); };
+    s.onerror = function () { fin(false); };
+    setTimeout(function () { fin(false); }, 12000);
+    document.head.appendChild(s);
+  }
+  function initAuth() {
+    if (!CONFIGURED) return;
+    loadLib(function (ok) {
+      if (!ok) return authUnavailable();
+      try { sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, { global: { headers: { 'x-device-id': deviceId } } }); } catch (e) { return authUnavailable(); }
+      /* Supabase asks that nothing else is called from inside this callback, so hand off with a timer. */
+      sb.auth.onAuthStateChange(function (event, session) { setTimeout(function () { onSession(event, session); }, 0); });
+      setTimeout(authUnavailable, 10000);
+    });
+  }
+  function signIn() {
+    if (!sb) return;
+    markClaim();
+    sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } })
+      .then(function (r) { if (r && r.error) { acct.note = 'Sign-in didn\'t start: ' + r.error.message; renderStart(); } });
+  }
+  function signOut() {
+    clearClaim();
+    if (sb) sb.auth.signOut({ scope: 'local' }).catch(function () {}).then(function () { if (acct.state !== 'signedout') signedOut(''); });
+    else signedOut('');
+  }
+  function accountText() {
+    if (acct.state !== 'signedin') return 'Flights are saved on this device.';
+    return 'Signed in as ' + esc(acct.email || 'your account') + (acct.offline ? ' · offline' : '') +
+      '<br><button class="link" data-act="signout">Sign out</button>';
+  }
+
+  /* ---------- dialog ---------- */
+  var dlg = document.getElementById('dlg'), dlgYes = document.getElementById('dlg-yes'), dlgNo = document.getElementById('dlg-no');
+  var dlgCb = null;
+  function ask(msg, yesLabel, cb, danger) {
+    document.getElementById('dlg-msg').textContent = msg;
+    dlgYes.textContent = yesLabel || 'Continue';
+    dlgYes.className = 'btn small' + (danger ? ' danger' : '');
+    dlgCb = cb; dlg.hidden = false;
+  }
+  dlgNo.onclick = function () { dlg.hidden = true; dlgCb = null; };
+  dlgYes.onclick = function () { dlg.hidden = true; var cb = dlgCb; dlgCb = null; if (cb) cb(); };
+
+  /* ---------- home ---------- */
+  function renderHome() {
+    if (!canUse()) return renderStart();
+    curId = null; setLast(null); screen = 'home';
+    var list = Object.keys(store.flights).map(function (k) { return store.flights[k]; })
+      .sort(function (a, b) { return (b.flightDate || '').localeCompare(a.flightDate || '') || b.updatedAt - a.updatedAt; });
+    var h = '<header class="top"><h1>Crew Meal Manager</h1></header>';
+    h += '<button class="btn" data-act="new">+ New Flight</button>';
+    h += '<h2>Saved flights</h2>';
+    if (!list.length) {
+      h += '<div class="card empty">No flights yet. Tap <b>New Flight</b> to start.</div>';
+    } else {
+      h += '<div class="card">';
+      list.forEach(function (f, i) {
+        var t = totals(f), tot = t.A + t.B + t.C;
+        h += '<div class="flight"' + (i ? ' style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px"' : '') + '>' +
+          '<button class="open" data-act="open" data-id="' + esc(f.id) + '"><div class="fno">' + esc(f.flightNumber || 'Untitled flight') + '</div>' +
+          '<div class="meta">' + esc(fmtDate(f.flightDate)) + ' · ' + tot + ' meals · ' + (f.generated ? f.carts.length + ' carts' : 'no carts yet') + '</div></button>' +
+          '<button class="x" data-act="delflight" data-id="' + esc(f.id) + '" aria-label="Delete flight">×</button></div>';
+      });
+      h += '</div>';
+    }
+    h += '<p class="foot">' + accountText() + '</p>';
+    app.innerHTML = h;
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- flight screen ---------- */
+  function renderFlight() {
+    if (!canUse()) return renderStart();
+    var f = flight(); if (!f) return renderHome();
+    screen = 'flight';
+    var h = '<header class="top"><button class="back" data-act="home">‹ Flights</button><h1>' + esc(f.flightNumber || 'New flight') + '</h1><span class="saved" id="saved">Saved</span></header>';
+
+    h += '<h2>1 · Flight details</h2><div class="card"><div class="grid2">' +
+      '<div><label class="f" for="fn">Flight number</label><input id="fn" class="upper" data-f="fn" autocapitalize="characters" autocomplete="off" maxlength="10" placeholder="e.g. QR 1" value="' + esc(f.flightNumber) + '"></div>' +
+      '<div><label class="f" for="fd">Flight date</label><input id="fd" type="date" data-f="fd" value="' + esc(f.flightDate) + '"></div>' +
+      '</div></div>';
+
+    h += '<h2>2 · Standard meal choices</h2><div class="card">';
+    KEYS.forEach(function (k) {
+      h += '<div class="row"><span class="tag">' + k + '</span>' +
+        '<input data-f="cn" data-k="' + k + '" maxlength="40" placeholder="Choice ' + k + ' name" value="' + esc(f.choices[k].name) + '">' +
+        numInput('data-f="cq" data-k="' + k + '" aria-label="Choice ' + k + ' quantity"', f.choices[k].qty) + '</div>';
+    });
+    h += '<div class="totalline"><span>Total standard casseroles</span><span class="big" id="stdTotal">0</span></div></div>';
+
+    h += '<h2>3 · Carts</h2><div class="card">' +
+      '<div class="row"><label class="lbl" for="cc" style="white-space:normal">How many carts do you need?</label>' +
+      numInput('id="cc" data-f="cc" maxlength="2"', f.cartCount || '') + '</div>' +
+      '<div id="ccmsg"></div>' +
+      '<button class="btn" data-act="generate" style="margin-top:10px">SAVE &amp; GENERATE CARTS</button></div>';
+
+    if (f.generated) {
+      h += '<h2>Summary</h2><div id="summary"></div>';
+      h += '<h2>Carts</h2><div id="carts">' + f.carts.map(function (c, i) { return cartHTML(f, i); }).join('') + '</div>';
+    }
+    app.innerHTML = h;
+    refresh(true);
+  }
+
+  var CART_NAMES = ['L3', 'R3', 'L3A', 'R3A', 'L4', 'R4', 'L4A', 'R4A', 'L4C', 'R4C', 'L5', 'R5', 'L5A', 'R5A', 'R5C', 'L2', 'R2', 'L2A', 'R2A'];
+  function cartNameHTML(f, i) {
+    var c = f.carts[i], name = (c.name || '').trim().toUpperCase();
+    var manual = !!c.manualName || (name !== '' && CART_NAMES.indexOf(name) < 0);
+    var used = {};
+    f.carts.forEach(function (o, j) { if (j !== i && o.name) used[o.name.trim().toUpperCase()] = true; });
+    var h = '<select class="cartsel' + (!name && !manual ? ' empty' : '') + '" data-f="cartsel" data-ci="' + i + '" aria-label="Cart name">' +
+      '<option value=""' + (!name && !manual ? ' selected' : '') + '>Choose cart</option>';
+    CART_NAMES.forEach(function (n) {
+      h += '<option value="' + n + '"' + (!manual && name === n ? ' selected' : '') + '>' + n + (used[n] ? ' (used)' : '') + '</option>';
+    });
+    h += '<option value="__other"' + (manual ? ' selected' : '') + '>Other (type it)…</option></select>';
+    if (manual) h += '<input data-f="cartname" data-ci="' + i + '" class="upper" autocapitalize="characters" maxlength="20" placeholder="Type cart name" value="' + esc(c.name) + '">';
+    return h;
+  }
+  function cartHTML(f, i) {
+    var c = f.carts[i];
+    var h = '<div class="card cart" id="cart-' + i + '">' +
+      '<div class="cart-head">' + cartNameHTML(f, i) +
+      '<span class="pill ok" id="pill-' + i + '"></span></div>';
+    h += '<div class="sub" style="margin-top:0">Standard meals</div>';
+    KEYS.forEach(function (k) {
+      h += '<div class="row"><span class="tag">' + k + '</span><span class="lbl" data-cl="' + k + '"></span>' +
+        numInput('data-f="std" data-ci="' + i + '" data-k="' + k + '" aria-label="Choice ' + k + ' in cart"', toInt(c.std[k])) + '</div>';
+    });
+    h += '<div class="sub">Special meals</div>';
+    c.specials.forEach(function (s, si) {
+      h += '<div class="sp-row"><input class="spn upper" list="spml" data-f="spn" data-ci="' + i + '" data-si="' + si + '" autocapitalize="characters" autocomplete="off" maxlength="12" placeholder="e.g. AVML" value="' + esc(s.name) + '">' +
+        numInput('data-f="spq" data-ci="' + i + '" data-si="' + si + '" maxlength="2" aria-label="Special meal quantity"', toInt(s.qty)) +
+        '<button class="x" data-act="delsp" data-ci="' + i + '" data-si="' + si + '" aria-label="Remove special meal">×</button></div>';
+    });
+    h += '<button class="btn ghost small" data-act="addsp" data-ci="' + i + '">+ Special Meal</button>';
+    h += '<div class="cart-foot"><span id="foot-' + i + '"></span><span class="big" id="tot-' + i + '"></span></div></div>';
+    return h;
+  }
+
+  function summaryHTML(f) {
+    var t = totals(f), a = allocatedTotals(f.carts);
+    var reqT = t.A + t.B + t.C, alT = a.A + a.B + a.C;
+    var spT = f.carts.reduce(function (s, c) { return s + specialsTotal(c); }, 0);
+    var h = '';
+    h += '<div class="mode"><span class="dot' + (f.autoMode ? '' : ' off') + '"></span>' +
+      (f.autoMode ? 'Automatic distribution is on' : 'Manual changes kept — automatic distribution paused') + '</div>';
+
+    var un = 0, ov = 0;
+    KEYS.forEach(function (k) { var d = t[k] - a[k]; if (d > 0) un += d; else ov -= d; });
+    if (ov > 0) {
+      h += '<div class="notice bad">' + ov + ' more standard meal' + (ov === 1 ? ' is' : 's are') + ' in carts than requested. Lower cart quantities or redistribute.</div>';
+    }
+    if (un > 0) {
+      var cap = f.carts.reduce(function (s, c) { return s + Math.max(0, CAP - cartTotal(c)); }, 0);
+      if (f.autoMode || cap === 0) {
+        h += '<div class="notice bad">' + un + ' meal' + (un === 1 ? '' : 's') + ' unallocated — not enough cart space. Add carts or reduce quantities.</div>';
+      } else {
+        h += '<div class="notice warn">' + un + ' meal' + (un === 1 ? ' is' : 's are') + ' not in any cart yet. Add them manually or redistribute.</div>';
+      }
+    }
+    if (un === 0 && ov === 0 && reqT > 0) h += '<div class="notice ok">All ' + reqT + ' standard meals are allocated.</div>';
+
+    h += '<div class="card"><table class="sum"><tr><th>Choice</th><th>Requested</th><th>Allocated</th><th>Left</th></tr>';
+    KEYS.forEach(function (k) {
+      var d = t[k] - a[k];
+      h += '<tr><td>' + k + ' · ' + esc(cname(f, k)) + '</td><td>' + t[k] + '</td><td>' + a[k] + '</td><td class="' + (d === 0 ? 'green' : 'red') + '">' + d + '</td></tr>';
+    });
+    h += '<tr class="tot"><td>Total</td><td>' + reqT + '</td><td>' + alT + '</td><td class="' + (reqT === alT ? 'green' : 'red') + '">' + (reqT - alT) + '</td></tr></table>' +
+      '<p class="hint">Special meals: ' + spT + ' · Cart space: ' + (f.carts.length * CAP) + ' (' + f.carts.length + ' × 40)</p></div>';
+
+    h += '<div class="card">';
+    f.carts.forEach(function (c, i) {
+      var tot = cartTotal(c), bad = tot > CAP;
+      var parts = KEYS.map(function (k) { return k + ' ' + toInt(c.std[k]); });
+      c.specials.forEach(function (s) { if (toInt(s.qty) > 0) parts.push(esc((s.name || 'Special').toUpperCase()) + ' ' + toInt(s.qty)); });
+      h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + '</div><div class="det">' + parts.join(' · ') + '</div></div>' +
+        '<span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + ' / 40</span></div>';
+    });
+    h += '</div>';
+    h += '<button class="btn ghost" data-act="redistribute">Redistribute automatically</button>';
+    return h;
+  }
+
+  /* Update numbers and labels in place, without rebuilding inputs (keeps the keyboard open). */
+  function refresh(force) {
+    var f = flight(); if (!f) return;
+    var ae = document.activeElement;
+    var t = totals(f);
+    var el = document.getElementById('stdTotal'); if (el) el.textContent = t.A + t.B + t.C;
+    var h1 = app.querySelector('header.top h1'); if (h1) h1.textContent = f.flightNumber || 'New flight';
+
+    var msg = document.getElementById('ccmsg');
+    if (msg) {
+      var m = '';
+      if (f.generated && f.cartCount && f.cartCount !== f.carts.length) m = '<p class="hint">Press SAVE &amp; GENERATE CARTS to change from ' + f.carts.length + ' to ' + f.cartCount + ' carts.</p>';
+      else if (!f.generated) m = '<p class="hint">Enter the number of carts, then press the button.</p>';
+      msg.innerHTML = m;
+    }
+    if (!f.generated) return;
+
+    var sum = document.getElementById('summary'); if (sum) sum.innerHTML = summaryHTML(f);
+    f.carts.forEach(function (c, i) {
+      var tot = cartTotal(c), bad = tot > CAP;
+      var card = document.getElementById('cart-' + i); if (!card) return;
+      card.classList.toggle('over', bad);
+      var pill = document.getElementById('pill-' + i);
+      pill.className = 'pill ' + (bad ? 'bad' : 'ok'); pill.textContent = tot + ' / 40';
+      document.getElementById('tot-' + i).textContent = tot;
+      document.getElementById('foot-' + i).innerHTML = bad
+        ? '<span class="red">Over by ' + (tot - CAP) + '</span>'
+        : '<span class="green">' + (CAP - tot) + ' left</span>';
+      card.querySelectorAll('[data-cl]').forEach(function (s) { s.textContent = cname(f, s.getAttribute('data-cl')); });
+      card.querySelectorAll('input[data-f="std"]').forEach(function (inp) {
+        if (force || inp !== ae) inp.value = toInt(c.std[inp.getAttribute('data-k')]);
+      });
+      card.querySelectorAll('input[data-f="spq"]').forEach(function (inp) {
+        var s = c.specials[+inp.getAttribute('data-si')]; if (s && (force || inp !== ae)) inp.value = toInt(s.qty);
+      });
+    });
+  }
+
+  function autoDistribute(f) {
+    var r = distribute(totals(f), f.carts);
+    r.alloc.forEach(function (a, i) { f.carts[i].std = a; });
+  }
+
+  /* Read a numeric field: digits only, clamp to [0, max]. Rewrites the field only if needed. */
+  function readNum(inp, max) {
+    var raw = inp.value, digits = raw.replace(/\D/g, '');
+    var v = digits === '' ? 0 : parseInt(digits, 10);
+    if (v > max) v = max;
+    var shown = digits === '' ? '' : String(v);
+    if (shown !== raw) inp.value = shown;
+    return v;
+  }
+
+  /* ---------- events ---------- */
+  app.addEventListener('input', function (e) {
+    var inp = e.target, f = flight(); if (!f || !inp.dataset || !inp.dataset.f) return;
+    var k = inp.dataset.k, ci = +inp.dataset.ci, si = +inp.dataset.si, cart = f.carts[ci];
+    switch (inp.dataset.f) {
+      case 'fn': f.flightNumber = inp.value.toUpperCase().trim(); break;
+      case 'fd': f.flightDate = inp.value; break;
+      case 'cn': f.choices[k].name = inp.value; break;
+      case 'cq':
+        f.choices[k].qty = readNum(inp, 9999);
+        if (f.generated && f.autoMode) autoDistribute(f);
+        break;
+      case 'cc': f.cartCount = readNum(inp, 60); break;
+      case 'cartname': cart.name = inp.value.toUpperCase(); break;
+      case 'cartsel':
+        if (inp.value === '__other') { cart.manualName = true; if (CART_NAMES.indexOf((cart.name || '').toUpperCase()) >= 0) cart.name = ''; }
+        else { cart.manualName = false; cart.name = inp.value; }
+        touch(f);
+        redrawCartHeads(f, inp.value === '__other' ? ci : -1);
+        refresh(false);
+        return;
+      case 'std':
+        cart.std[k] = readNum(inp, manualMax(totals(f), f.carts, ci, k));
+        f.autoMode = false;
+        break;
+      case 'spn': cart.specials[si].name = inp.value.toUpperCase().trim(); break;
+      case 'spq':
+        cart.specials[si].qty = readNum(inp, specialMax(cart, si));
+        if (f.autoMode) autoDistribute(f); else trimCart(cart);
+        break;
+      default: return;
+    }
+    touch(f); refresh(false);
+  });
+  app.addEventListener('change', function (e) {
+    if (e.target && e.target.dataset && e.target.dataset.f === 'cartname') { var fc = flight(); if (fc) redrawCartHeads(fc, -1); return; }
+    if (e.target && e.target.classList && e.target.classList.contains('num')) {
+      var f = flight();
+      if (f && e.target.dataset.f === 'cq') e.target.value = toInt(f.choices[e.target.dataset.k].qty);
+      refresh(true);
+    }
+  });
+
+  app.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (e.target.id === 'authform') emailSubmit(e.target);
+    else if (e.target.id === 'newpwform') newPasswordSubmit(e.target);
+  });
+  app.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]'); if (!b) return;
+    var act = b.dataset.act, f = flight();
+    if (act === 'signin') return signIn();
+    if (act === 'mode-signin' || act === 'mode-signup' || act === 'mode-reset') {
+      var em = document.querySelector('#authform input[name=email]'); if (em) auth.email = em.value.trim();
+      auth.mode = act.slice(5); acct.note = ''; auth.info = ''; renderStart(); return;
+    }
+    if (act === 'signout') return signOut();
+    if (act === 'retry') { location.reload(); return; }
+    if (!canUse()) return renderStart();
+    if (act === 'start') {
+      var lastId = getLast();
+      if (lastId && store.flights[lastId]) { curId = lastId; renderFlight(); window.scrollTo(0, 0); } else renderHome();
+      return;
+    }
+    if (act === 'new') { var nf = newFlight(); store.flights[nf.id] = nf; curId = nf.id; setLast(nf.id); touch(nf); renderFlight(); window.scrollTo(0, 0); return; }
+    if (act === 'open') { curId = b.dataset.id; setLast(curId); renderFlight(); window.scrollTo(0, 0); return; }
+    if (act === 'home') { renderHome(); return; }
+    if (act === 'delflight') {
+      var df = store.flights[b.dataset.id];
+      ask('Delete flight ' + (df.flightNumber || 'Untitled') + ' (' + fmtDate(df.flightDate) + ')? This cannot be undone.', 'Delete', function () {
+        delete store.flights[df.id];
+        if (store.deleted.indexOf(df.id) < 0) store.deleted.push(df.id);
+        saveLocal(); cloudWrite(df.id); renderHome();
+      }, true);
+      return;
+    }
+    if (!f) return;
+    if (act === 'generate') return generate(f);
+    if (act === 'redistribute') {
+      var go = function () { f.autoMode = true; autoDistribute(f); touch(f); refresh(true); };
+      if (!f.autoMode) ask('Redistribute all standard meals automatically? Your manual changes to Choice A, B and C in the carts will be replaced. Special meals stay where they are.', 'Redistribute', go);
+      else go();
+      return;
+    }
+    if (act === 'addsp') {
+      var ci = +b.dataset.ci, cc = f.carts[ci];
+      cc.specials.push({ id: uid('s'), name: '', qty: 0 });
+      cc.specials[cc.specials.length - 1].qty = Math.min(1, specialMax(cc, cc.specials.length - 1));
+      if (f.autoMode) autoDistribute(f); else trimCart(cc);
+      touch(f); redrawCart(f, ci);
+      var ins = document.querySelectorAll('#cart-' + ci + ' input[data-f="spn"]'); if (ins.length) ins[ins.length - 1].focus();
+      return;
+    }
+    if (act === 'delsp') {
+      var c2 = +b.dataset.ci; f.carts[c2].specials.splice(+b.dataset.si, 1);
+      if (f.autoMode) autoDistribute(f);
+      touch(f); redrawCart(f, c2); return;
+    }
+  });
+
+  function redrawCartHeads(f, focusCi) {
+    f.carts.forEach(function (c, i) {
+      var head = document.querySelector('#cart-' + i + ' .cart-head'); if (!head) return;
+      var pill = document.getElementById('pill-' + i);
+      head.innerHTML = cartNameHTML(f, i);
+      if (pill) head.appendChild(pill);
+    });
+    if (focusCi >= 0) { var t = document.querySelector('#cart-' + focusCi + ' input[data-f="cartname"]'); if (t) t.focus(); }
+  }
+  function redrawCart(f, ci) {
+    var old = document.getElementById('cart-' + ci); if (!old) return;
+    var tmp = document.createElement('div'); tmp.innerHTML = cartHTML(f, ci);
+    old.replaceWith(tmp.firstChild);
+    refresh(true);
+  }
+
+  function generate(f) {
+    var n = toInt(f.cartCount);
+    var msg = document.getElementById('ccmsg');
+    if (n < 1) { msg.innerHTML = '<p class="err">Enter how many carts you need (1–60).</p>'; document.getElementById('cc').focus(); return; }
+    var removed = f.carts.slice(n);
+    var removedHasData = removed.some(function (c) { return (c.name || '').trim() || c.specials.length; });
+    var go = function () {
+      while (f.carts.length < n) f.carts.push(newCart());
+      f.carts.length = n;
+      f.generated = true; f.autoMode = true;
+      autoDistribute(f); touch(f);
+      var y = window.scrollY; renderFlight(); window.scrollTo(0, y);
+      var s = document.getElementById('summary'); if (s) s.scrollIntoView({ block: 'start' });
+    };
+    if (removedHasData) ask('Going to ' + n + ' carts removes ' + removed.length + ' cart(s), including their names and special meals. Continue?', 'Remove carts', go, true);
+    else if (f.generated && !f.autoMode) ask('This will redistribute all standard meals and replace your manual changes. Special meals stay where they are.', 'Generate', go);
+    else go();
+  }
+
+  /* ---------- start ---------- */
+  if (!CONFIGURED) loadLocal();
+  renderStart();
+  initAuth();
+})();
+</script>
+</body>
+</html>
