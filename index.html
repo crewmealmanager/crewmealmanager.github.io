@@ -81,6 +81,7 @@
   .cs .nm .rws{font-weight:600;color:var(--accent);margin-left:6px;font-size:13px}
   .rows-row{display:flex;align-items:center;gap:6px;margin:0 0 6px}
   .rows-row span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  #carts .rows-row select.capsel{flex:none;width:76px;height:34px;padding:0 22px 0 10px;background-position:right 7px center}
   .rows-row input.rows-in{flex:1;min-width:0;height:34px;font-size:16px;padding:0 8px}
   .cs .det{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
   .cs .grow{flex:1;min-width:0}
@@ -182,6 +183,8 @@ function toInt(v) { v = Math.floor(Number(v)); return isFinite(v) && v > 0 ? v :
 function specialsTotal(cart) { return cart.specials.reduce(function (s, x) { return s + toInt(x.qty); }, 0); }
 function stdTotal(cart) { return KEYS.reduce(function (s, k) { return s + toInt(cart.std[k]); }, 0); }
 function cartTotal(cart) { return specialsTotal(cart) + stdTotal(cart); }
+/* Each cart holds 40 unless the user lowered it for that cart. */
+function capOf(cart) { var c = toInt(cart && cart.cap); return c >= 1 && c <= CAP ? c : CAP; }
 
 /* Distribute standard meals across carts.
    - Special meals stay where the user put them and reduce that cart's free space.
@@ -190,7 +193,7 @@ function cartTotal(cart) { return specialsTotal(cart) + stdTotal(cart); }
    - Never exceeds 40 per cart, never invents or loses a meal; leftovers are returned as unallocated. */
 function distribute(totals, carts) {
   var n = carts.length;
-  var cap = carts.map(function (c) { return Math.max(0, CAP - specialsTotal(c)); });
+  var cap = carts.map(function (c) { return Math.max(0, capOf(c) - specialsTotal(c)); });
   var free = cap.slice();
   var alloc = carts.map(function () { return { A: 0, B: 0, C: 0 }; });
   var left = { A: toInt(totals.A), B: toInt(totals.B), C: toInt(totals.C) };
@@ -201,7 +204,7 @@ function distribute(totals, carts) {
     var best = -1, bestScore = Infinity;
     for (var i = 0; i < n; i++) {
       if (free[i] <= 0) continue;
-      var score = (alloc[i][k] + 1) / cap[i];
+      var score = (alloc[i][k] + 1) / Math.max(1, cap[i]);
       if (score < bestScore - 1e-12 || (Math.abs(score - bestScore) <= 1e-12 && free[i] > free[best])) {
         best = i; bestScore = score;
       }
@@ -223,20 +226,20 @@ function allocatedTotals(carts) {
 function manualMax(totals, carts, ci, k) {
   var cart = carts[ci];
   var current = toInt(cart.std[k]);
-  var room = CAP - (cartTotal(cart) - current);
+  var room = capOf(cart) - (cartTotal(cart) - current);
   var unplaced = toInt(totals[k]) - allocatedTotals(carts)[k];
   return Math.max(0, Math.min(room, current + Math.max(0, unplaced)));
 }
 
 /* Largest quantity allowed for one special meal line (specials alone may not exceed 40). */
 function specialMax(cart, si) {
-  return Math.max(0, CAP - (specialsTotal(cart) - toInt(cart.specials[si].qty)));
+  return Math.max(0, capOf(cart) - (specialsTotal(cart) - toInt(cart.specials[si].qty)));
 }
 
 /* Remove standard meals from a cart until it fits in 40 (largest choice first).
    Removed meals become unallocated. Used when automatic distribution is paused. */
 function trimCart(cart) {
-  var over = cartTotal(cart) - CAP;
+  var over = cartTotal(cart) - capOf(cart);
   while (over > 0) {
     var k = null;
     KEYS.forEach(function (key) { if (toInt(cart.std[key]) > 0 && (k === null || cart.std[key] > cart.std[k])) k = key; });
@@ -796,12 +799,21 @@ function trimCart(cart) {
     var inp = manual ? '<input class="num qty-manual" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" data-f="spq" data-ci="' + i + '" data-si="' + si + '" placeholder="Type quantity" aria-label="Special meal quantity" value="' + (q || '') + '">' : '';
     return h + inp;
   }
+  function capSelHTML(c, i) {
+    var cp = capOf(c), h = '<label class="rows-row"><span>Max meals</span><select class="cartsel capsel" data-f="cap" data-ci="' + i + '" aria-label="Maximum meals in this cart">';
+    for (var n = CAP; n >= 1; n--) h += '<option value="' + n + '"' + (n === cp ? ' selected' : '') + '>' + n + '</option>';
+    return h + '</select></label>';
+  }
+  function spaceText(f) {
+    var caps = f.carts.map(capOf), sum = caps.reduce(function (a, b) { return a + b; }, 0);
+    return caps.every(function (x) { return x === caps[0]; }) ? sum + ' (' + caps.length + ' × ' + (caps[0] || CAP) + ')' : String(sum);
+  }
   function cartHTML(f, i) {
     var c = f.carts[i];
     var h = '<div class="card cart" id="cart-' + i + '">' +
       '<div class="cart-head">' + cartNameHTML(f, i) +
       '<span class="pill ok" id="pill-' + i + '"></span></div>' +
-      '<label class="rows-row"><span>Rows</span><input data-f="rows" data-ci="' + i + '" class="rows-in" inputmode="text" autocomplete="off" maxlength="20" placeholder="e.g. 30-35" value="' + esc(c.rows || '') + '"></label>';
+      capSelHTML(c, i) + '<label class="rows-row"><span>Rows</span><input data-f="rows" data-ci="' + i + '" class="rows-in" inputmode="text" autocomplete="off" maxlength="20" placeholder="e.g. 30-35" value="' + esc(c.rows || '') + '"></label>';
     h += '<div class="sub" style="margin-top:0">Standard meals</div>';
     KEYS.forEach(function (k) {
       h += '<div class="row"><span class="tag">' + k + '</span><span class="lbl" data-cl="' + k + '"></span>' +
@@ -834,7 +846,7 @@ function trimCart(cart) {
       h += '<div class="notice bad">' + ov + ' more standard meal' + (ov === 1 ? ' is' : 's are') + ' in carts than requested. Lower cart quantities or redistribute.</div>';
     }
     if (un > 0) {
-      var cap = f.carts.reduce(function (s, c) { return s + Math.max(0, CAP - cartTotal(c)); }, 0);
+      var cap = f.carts.reduce(function (s, c) { return s + Math.max(0, capOf(c) - cartTotal(c)); }, 0);
       if (f.autoMode || cap === 0) {
         h += '<div class="notice bad">' + un + ' meal' + (un === 1 ? '' : 's') + ' unallocated — not enough cart space. Add carts or reduce quantities.</div>';
       } else {
@@ -854,15 +866,15 @@ function trimCart(cart) {
     var showSp = spReq > 0 || spT > 0, rT = reqT + (showSp ? spReq : 0), aT = alT + (showSp ? spT : 0);
     if (showSp) h += '<tr><td>SPML</td><td>' + spReq + '</td><td>' + spT + '</td><td class="' + (spLeft === 0 ? 'green' : 'red') + '">' + spLeft + '</td></tr>';
     h += '<tr class="tot"><td>Total</td><td>' + rT + '</td><td>' + aT + '</td><td class="' + (rT === aT ? 'green' : 'red') + '">' + (rT - aT) + '</td></tr></table>' +
-      '<p class="hint">Special meals: ' + spT + ' · Cart space: ' + (f.carts.length * CAP) + ' (' + f.carts.length + ' × 40)</p></div>';
+      '<p class="hint">Special meals: ' + spT + ' · Cart space: ' + spaceText(f) + '</p></div>';
 
     h += '<div class="card">';
     f.carts.forEach(function (c, i) {
-      var tot = cartTotal(c), bad = tot > CAP;
+      var tot = cartTotal(c), cp = capOf(c), bad = tot > cp;
       var parts = KEYS.map(function (k) { return k + ' ' + toInt(c.std[k]); });
       c.specials.forEach(function (s) { if (toInt(s.qty) > 0) parts.push(esc((s.name || 'Special').toUpperCase()) + ' ' + toInt(s.qty)); });
       h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + ((c.rows || '').trim() ? '<span class="rws">Rows ' + esc(c.rows.trim()) + '</span>' : '') + '</div><div class="det">' + parts.join(' · ') + '</div>' + ((c.notes || '').trim() ? '<div class="nt">📝 ' + esc(c.notes.trim()) + '</div>' : '') + '</div>' +
-        '<span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + ' / 40</span></div>';
+        '<span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + ' / ' + cp + '</span></div>';
     });
     h += '</div>';
     h += '<button class="btn ghost" data-act="redistribute">Redistribute automatically</button>';
@@ -888,15 +900,15 @@ function trimCart(cart) {
 
     var sum = document.getElementById('summary'); if (sum) sum.innerHTML = summaryHTML(f);
     f.carts.forEach(function (c, i) {
-      var tot = cartTotal(c), bad = tot > CAP;
+      var tot = cartTotal(c), cp = capOf(c), bad = tot > cp;
       var card = document.getElementById('cart-' + i); if (!card) return;
       card.classList.toggle('over', bad);
       var pill = document.getElementById('pill-' + i);
-      pill.className = 'pill ' + (bad ? 'bad' : 'ok'); pill.textContent = tot + ' / 40';
+      pill.className = 'pill ' + (bad ? 'bad' : 'ok'); pill.textContent = tot + ' / ' + cp;
       document.getElementById('tot-' + i).textContent = tot;
       document.getElementById('foot-' + i).innerHTML = bad
-        ? '<span class="red">Over by ' + (tot - CAP) + '</span>'
-        : '<span class="green">' + (CAP - tot) + ' left</span>';
+        ? '<span class="red">Over by ' + (tot - cp) + '</span>'
+        : '<span class="green">' + (cp - tot) + ' left</span>';
       card.querySelectorAll('[data-cl]').forEach(function (s) { s.textContent = cname(f, s.getAttribute('data-cl')); });
       card.querySelectorAll('input[data-f="std"]').forEach(function (inp) {
         if (force || inp !== ae) inp.value = toInt(c.std[inp.getAttribute('data-k')]);
@@ -949,6 +961,10 @@ function trimCart(cart) {
         f.autoMode = false;
         break;
       case 'notes': cart.notes = inp.value; break;
+      case 'cap':
+        cart.cap = toInt(inp.value) || CAP;
+        if (f.autoMode) autoDistribute(f); else trimCart(cart);
+        touch(f); redrawCart(f, ci); return;
       case 'rows':
         cart.rows = inp.value;
         var mate = f.carts[ci ^ 1];
