@@ -117,6 +117,10 @@
   #carts .sub{margin:6px 0 4px;font-size:10px}
   #carts .sp-row{gap:4px;margin-bottom:5px}
   #carts .sp-row input.spn{padding:0 6px}
+  .sp-row{flex-wrap:wrap}
+  .sp-row select.spsel{flex:1;min-width:0}
+  #carts .sp-row select.spsel{height:36px;padding-left:6px;padding-right:24px;background-position:right 6px center}
+  .sp-row input.spn.sp-manual{flex:1 1 100%;order:3}
   #carts .x{width:28px;height:36px;font-size:17px;border-radius:8px}
   #carts .btn.small{min-height:34px;font-size:13px;padding:0 4px}
   #carts .cart-foot{margin-top:6px;padding-top:6px;font-size:12px;align-items:center}
@@ -143,11 +147,6 @@
 <body>
 <div class="wrap" id="app"></div>
 
-<datalist id="spml">
-  <option value="AVML"><option value="VGML"><option value="VLML"><option value="VJML"><option value="VOML"><option value="RVML">
-  <option value="GFML"><option value="MOML"><option value="KSML"><option value="HNML"><option value="DBML"><option value="LFML">
-  <option value="LSML"><option value="NLML"><option value="BLML"><option value="SFML"><option value="FPML"><option value="CHML"><option value="BBML">
-</datalist>
 
 <div class="dlg-back" id="dlg" hidden>
   <div class="dlg" role="dialog" aria-modal="true">
@@ -758,6 +757,16 @@ function trimCart(cart) {
     if (manual) h += '<input data-f="cartname" data-ci="' + i + '" class="upper" autocapitalize="characters" maxlength="20" placeholder="Type cart name" value="' + esc(c.name) + '">';
     return h;
   }
+  var SP_NAMES = ['AVML', 'HNML', 'VOML', 'VGML', 'VJML', 'VLML', 'LCML', 'LFML', 'GFML', 'BLML', 'CHML', 'CVML', 'KSML', 'RVML', 'NLML', 'DBML', 'MOML'];
+  function spNameHTML(i, si, s) {
+    var name = (s.name || '').trim().toUpperCase();
+    var manual = !!s.manualName || (name !== '' && SP_NAMES.indexOf(name) < 0);
+    var h = '<select class="cartsel spsel' + (!name && !manual ? ' empty' : '') + '" data-f="spsel" data-ci="' + i + '" data-si="' + si + '" aria-label="Special meal">' +
+      '<option value=""' + (!name && !manual ? ' selected' : '') + '>Choose meal</option>';
+    SP_NAMES.forEach(function (n) { h += '<option value="' + n + '"' + (!manual && name === n ? ' selected' : '') + '>' + n + '</option>'; });
+    h += '<option value="__other"' + (manual ? ' selected' : '') + '>Other (type it)…</option></select>';
+    return { sel: h, manual: manual ? '<input class="spn upper sp-manual" data-f="spn" data-ci="' + i + '" data-si="' + si + '" autocapitalize="characters" autocomplete="off" maxlength="12" placeholder="Type meal code" value="' + esc(s.name) + '">' : '' };
+  }
   function cartHTML(f, i) {
     var c = f.carts[i];
     var h = '<div class="card cart" id="cart-' + i + '">' +
@@ -770,7 +779,8 @@ function trimCart(cart) {
     });
     h += '<div class="sub">Special meals</div>';
     c.specials.forEach(function (s, si) {
-      h += '<div class="sp-row"><input class="spn upper" list="spml" data-f="spn" data-ci="' + i + '" data-si="' + si + '" autocapitalize="characters" autocomplete="off" maxlength="12" placeholder="e.g. AVML" value="' + esc(s.name) + '">' +
+      var sp = spNameHTML(i, si, s);
+      h += '<div class="sp-row">' + sp.sel + sp.manual +
         numInput('data-f="spq" data-ci="' + i + '" data-si="' + si + '" maxlength="2" aria-label="Special meal quantity"', toInt(s.qty)) +
         '<button class="x" data-act="delsp" data-ci="' + i + '" data-si="' + si + '" aria-label="Remove special meal">×</button></div>';
     });
@@ -902,6 +912,13 @@ function trimCart(cart) {
         f.autoMode = false;
         break;
       case 'spn': cart.specials[si].name = inp.value.toUpperCase().trim(); break;
+      case 'spsel':
+        var spx = cart.specials[si];
+        if (inp.value === '__other') { spx.manualName = true; if (SP_NAMES.indexOf((spx.name || '').toUpperCase()) >= 0) spx.name = ''; }
+        else { spx.manualName = false; spx.name = inp.value; }
+        touch(f); redrawCart(f, ci);
+        if (inp.value === '__other') { var mi = document.querySelector('#cart-' + ci + ' input[data-f="spn"][data-si="' + si + '"]'); if (mi) mi.focus(); }
+        return;
       case 'spq':
         cart.specials[si].qty = readNum(inp, specialMax(cart, si));
         if (f.autoMode) autoDistribute(f); else trimCart(cart);
@@ -966,7 +983,6 @@ function trimCart(cart) {
       cc.specials[cc.specials.length - 1].qty = Math.min(1, specialMax(cc, cc.specials.length - 1));
       if (f.autoMode) autoDistribute(f); else trimCart(cc);
       touch(f); redrawCart(f, ci);
-      var ins = document.querySelectorAll('#cart-' + ci + ' input[data-f="spn"]'); if (ins.length) ins[ins.length - 1].focus();
       return;
     }
     if (act === 'delsp') {
