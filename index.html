@@ -71,6 +71,20 @@
   table.sum tr.tot td{font-weight:800}
   .red{color:var(--bad)} .green{color:var(--ok)}
   .cs{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+  .ctw{padding-left:10px;padding-right:10px}
+  table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.ct th{font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;padding:4px 3px 6px;text-align:left;vertical-align:bottom;line-height:1.15;word-break:break-word}
+  table.ct th.n,table.ct td.n{text-align:center}
+  table.ct td{border-top:1px solid var(--line);padding:7px 3px;vertical-align:middle;font-size:15px;font-weight:700}
+  table.ct tr.hasnote td{padding-bottom:2px}
+  table.ct tr.ntr td{border-top:none;padding:0 3px 7px}
+  table.ct td.cn .nm{font-size:14px;font-weight:800;white-space:nowrap}
+  table.ct td.cn .rws{font-size:11px;font-weight:600;color:var(--accent);white-space:nowrap}
+  table.ct td.sp{line-height:1.9}
+  .spc{display:inline-block;background:#fff1d6;color:#8a4b00;border:1px solid #f3c77a;border-radius:6px;padding:0 5px;margin:1px 3px 1px 0;font-size:12px;font-weight:800;line-height:1.5;white-space:nowrap}
+  table.ct .none{color:var(--muted);font-weight:400}
+  table.ct .pill{font-size:11px;padding:2px 6px}
+  table.ct .nt{font-size:12px;font-weight:400;font-style:italic;white-space:pre-wrap;word-break:break-word}
   .cs:first-child{border-top:0;padding-top:0}
   .cs .nm{font-weight:700;font-size:14px}
   .spml-lbl{font-weight:700}
@@ -868,14 +882,25 @@ function trimCart(cart) {
     h += '<tr class="tot"><td>Total</td><td>' + rT + '</td><td>' + aT + '</td><td class="' + (rT === aT ? 'green' : 'red') + '">' + (rT - aT) + '</td></tr></table>' +
       '<p class="hint">Special meals: ' + spT + ' · Cart space: ' + spaceText(f) + '</p></div>';
 
-    h += '<div class="card">';
+    h += '<div class="card ctw"><table class="ct"><thead><tr><th>Cart</th>';
+    KEYS.forEach(function (k) { h += '<th class="n">' + esc((f.choices[k].name || '').trim() || k) + '</th>'; });
+    h += '<th class="sp">Special</th><th class="n">Total</th></tr></thead>';
     f.carts.forEach(function (c, i) {
       var tot = cartTotal(c), cp = capOf(c), bad = tot > cp;
-      var parts = KEYS.map(function (k) { return k + ' ' + toInt(c.std[k]); });
-      c.specials.forEach(function (s) { if (toInt(s.qty) > 0) parts.push(esc((s.name || 'Special').toUpperCase()) + ' ' + toInt(s.qty)); });
-      h += '<div class="cs"><div class="grow"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + ((c.rows || '').trim() ? '<span class="rws">Rows ' + esc(c.rows.trim()) + '</span>' : '') + '</div><div class="det">' + parts.join(' · ') + '</div>' + ((c.notes || '').trim() ? '<div class="nt">📝 ' + esc(c.notes.trim()) + '</div>' : '') + '</div>' +
-        '<span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + ' / ' + cp + '</span></div>';
+      var chips = c.specials.filter(function (x) { return toInt(x.qty) > 0; }).map(function (x) {
+        var code = (x.name || '').trim().toUpperCase().slice(0, 2) || 'SP';
+        return '<span class="spc">' + esc(code) + ' ' + toInt(x.qty) + '</span>';
+      }).join('');
+      var note = (c.notes || '').trim();
+      h += '<tbody><tr' + (note ? ' class="hasnote"' : '') + '><td class="cn"><div class="nm">' + esc(cartLabel(c, i).toUpperCase()) + '</div>' +
+        ((c.rows || '').trim() ? '<div class="rws">Rows ' + esc(c.rows.trim()) + '</div>' : '') + '</td>';
+      KEYS.forEach(function (k) { h += '<td class="n">' + toInt(c.std[k]) + '</td>'; });
+      h += '<td class="sp">' + (chips || '<span class="none">–</span>') + '</td>' +
+        '<td class="n"><span class="pill ' + (bad ? 'bad' : 'ok') + '">' + tot + '/' + cp + '</span></td></tr>';
+      if (note) h += '<tr class="ntr"><td colspan="6"><div class="nt">📝 ' + esc(note) + '</div></td></tr>';
+      h += '</tbody>';
     });
+    h += '</table>';
     h += '</div>';
     h += '<button class="btn ghost" data-act="redistribute">Redistribute automatically</button>';
     return h;
