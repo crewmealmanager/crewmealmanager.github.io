@@ -759,10 +759,10 @@ function trimCart(cart) {
     KEYS.forEach(function (k) {
       h += '<div class="row"><span class="tag">' + k + '</span>' +
         '<input data-f="cn" data-k="' + k + '" maxlength="40" placeholder="Choice ' + k + ' name" value="' + esc(f.choices[k].name) + '">' +
-        numInput('data-f="cq" data-k="' + k + '" aria-label="Choice ' + k + ' quantity"', f.choices[k].qty) + '</div>';
+        numInput('data-f="cq" data-k="' + k + '" placeholder="0" aria-label="Choice ' + k + ' quantity"', toInt(f.choices[k].qty) || '') + '</div>';
     });
     h += '<div class="row"><span class="tag">S</span><span class="lbl spml-lbl">SPML <small>(total special meals)</small></span>' +
-      numInput('data-f="spt" aria-label="Total special meals"', toInt(f.spmlTotal)) + '</div>';
+      numInput('data-f="spt" placeholder="0" aria-label="Total special meals"', toInt(f.spmlTotal) || '') + '</div>';
     h += '<div class="totalline"><span>Total casseroles</span><span class="big" id="stdTotal">0</span></div></div>';
 
     h += '<h2>3 · Carts</h2><div class="card">' +
@@ -1029,7 +1029,7 @@ function trimCart(cart) {
     if (e.target && e.target.dataset && e.target.dataset.f === 'cartname') { var fc = flight(); if (fc) redrawCartHeads(fc, -1); return; }
     if (e.target && e.target.classList && e.target.classList.contains('num')) {
       var f = flight();
-      if (f && e.target.dataset.f === 'cq') e.target.value = toInt(f.choices[e.target.dataset.k].qty);
+      if (f && e.target.dataset.f === 'cq') e.target.value = toInt(f.choices[e.target.dataset.k].qty) || '';
       refresh(true);
     }
   });
