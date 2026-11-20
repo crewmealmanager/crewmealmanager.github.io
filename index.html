@@ -384,7 +384,7 @@ function trimCart(cart) {
     if (/email not confirmed/i.test(m)) return 'Please confirm your email first, using the link we sent you.';
     if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Please choose a longer password (at least 8 characters).';
     if (/rate limit|too many/i.test(m)) return 'Too many attempts. Please wait a few minutes and try again.';
-    if (/not authorized|sending|smtp/i.test(m)) return 'We couldn\'t send the email right now. Please contact abdulghani7818@gmail.com.';
+    if (/not authorized|sending|smtp/i.test(m)) return 'We couldn\'t send the email right now. Please contact crewmealmanager@gmail.com.';
     return m || 'Something went wrong. Please try again.';
   }
   function emailSubmit(form) {
