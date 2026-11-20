@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.crewmealmanager.app",
+      "sha256_cert_fingerprints": [
+        "54:C3:4C:8E:6B:17:F2:C3:86:AE:AA:14:21:71:F5:C9:AC:83:3D:C2:3A:10:DF:45:F5:79:20:2E:4B:7F:18:52"
+      ]
+    }
+  }
+]
